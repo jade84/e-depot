@@ -134,3 +134,28 @@ export function useReviewOrder() {
     },
   })
 }
+
+// Admin xác nhận đã nhận thanh toán (chua_tt → da_tt) + gửi thông báo.
+export function useConfirmPayment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (order: Order) => {
+      const { error } = await supabase.from('orders').update({ trang_thai: 'da_tt' }).eq('id', order.id)
+      if (error) throw error
+
+      const ma = order.so_bl || order.id.slice(0, 8).toUpperCase()
+      const { error: e2 } = await supabase.from('notifications').insert({
+        owner_id: order.owner_id,
+        title: 'Đã nhận thanh toán',
+        body: `Đơn ${ma} đã được xác nhận thanh toán ${order.phi_nang_ha.toLocaleString('vi-VN')} đ. Cảm ơn bạn.`,
+        type: 'order_paid',
+        ref_id: order.id,
+      })
+      if (e2) throw e2
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['orders'] })
+      qc.invalidateQueries({ queryKey: ['orders-admin'] })
+    },
+  })
+}

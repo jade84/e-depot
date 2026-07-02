@@ -75,7 +75,7 @@ Chưa có test framework (không có script `test`).
 - **Admin — Duyệt xe** (`/admin/duyet-xe`, chỉ admin): xem xe chờ duyệt + ảnh xe/cà vẹt, **Duyệt / Từ chối (kèm lý do)**. `useReviewVehicle` cập nhật status **và gửi `notifications`** cho nhà xe (duyệt: "đã kích hoạt"; từ chối: kèm lý do). RLS: `14_vehicles_approve.sql`.
 - **Thông báo** (`/thong-bao`, `NotificationsPage`): nhà xe xem thông báo của mình (`useNotifications`), đọc tất cả (`useMarkAllRead`), xoá. Thông báo tạo khi admin duyệt/từ chối xe.
 - **Quản lý nhân sự**: thêm/xoá tài xế (ảnh khuôn mặt + CCCD trước/sau). Tài xế mới = **`cho_duyet`** → admin duyệt (`hoat_dong`/`tu_choi`); form đơn chỉ chọn tài xế `hoat_dong`. **Quét QR CCCD/Căn cước** (mặt sau với thẻ mới) tự điền + **đối chiếu** khi lưu.
-- **Admin — Duyệt tài xế** (`/admin/duyet-tai-xe`) & **Duyệt đơn** (`/admin/duyet-don`): giống duyệt xe, `useReviewDriver`/`useReviewOrder` cập nhật trạng thái + gửi `notifications`. Đơn duyệt → `chua_tt` (chờ thanh toán), từ chối → `tu_choi` (kèm lý do). Modal lý do dùng chung `RejectReasonModal`.
+- **Admin — Duyệt tài xế** (`/admin/duyet-tai-xe`) & **Quản lý đơn** (`/admin/duyet-don`): giống duyệt xe, `useReviewDriver`/`useReviewOrder` cập nhật trạng thái + gửi `notifications`. Đơn duyệt → `chua_tt` (chờ thanh toán), từ chối → `tu_choi` (kèm lý do). Tab **Chờ TT**: admin bấm **"Đã nhận thanh toán"** (`useConfirmPayment`, đối soát **thủ công**) → `da_tt` + thông báo. Modal lý do dùng chung `RejectReasonModal`.
 - **Lấy cont rỗng** (`/lay-cont`) và **Trả cont rỗng** (`/tra-cont`, nhập nhiều số cont ISO 6346) → tạo `orders`.
 - **Đơn hàng** (`/don-hang`): danh sách + hủy đơn.
 - **Chi tiết đơn** (`/don-hang/:id`): xem full thông tin đơn + ảnh.
@@ -100,7 +100,7 @@ Chưa có test framework (không có script `test`).
 
 ## Việc còn lại / định hướng
 - Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy các SQL mới trên Dashboard**: `07`→`12` (`07_pricing`, `08_catalog_admin`, `09_settings`, `10_pricing_drop_loai`, `11_catalog_group`, `12_pricing_carrier_group`).
-- Đã có duyệt xe/tài xế/đơn. (Sau) có thể gắn thông báo cho **thanh toán thành công**, nhắc đơn `chua_tt`, …
+- Thanh toán: hiện đối soát **thủ công** (admin bấm "Đã nhận thanh toán"). (Sau) tự động qua **webhook Casso/SePay** → Edge Function set `da_tt` (dùng lại logic `useConfirmPayment`).
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 
 ## Bối cảnh

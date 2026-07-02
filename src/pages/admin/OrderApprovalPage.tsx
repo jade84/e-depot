@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Check, X, Loader2, ShieldAlert, Clock } from 'lucide-react'
+import { Check, X, Loader2, ShieldAlert, Clock, Banknote } from 'lucide-react'
 import { ScreenHeader, RejectReasonModal } from '../../components/mobile'
 import { useAuth } from '../../lib/AuthContext'
-import { useAllOrders, useReviewOrder, type Order } from '../../features/orders'
+import { useAllOrders, useReviewOrder, useConfirmPayment, type Order } from '../../features/orders'
 import { ORDER_STATUS } from '../../lib/options'
 
 const TONE: Record<string, string> = {
@@ -17,7 +17,8 @@ export function OrderApprovalPage() {
   const { profile } = useAuth()
   const { data: orders, isLoading } = useAllOrders()
   const review = useReviewOrder()
-  const [tab, setTab] = useState<'cho_duyet' | 'all'>('cho_duyet')
+  const confirmPay = useConfirmPayment()
+  const [tab, setTab] = useState<'cho_duyet' | 'chua_tt' | 'all'>('cho_duyet')
   const [rejecting, setRejecting] = useState<Order | null>(null)
 
   if (profile?.role !== 'admin') {
@@ -34,14 +35,16 @@ export function OrderApprovalPage() {
     )
   }
 
-  const list = (orders ?? []).filter(o => tab === 'all' || o.trang_thai === 'cho_duyet')
-  const pending = (orders ?? []).filter(o => o.trang_thai === 'cho_duyet').length
+  const list = (orders ?? []).filter(o => tab === 'all' || o.trang_thai === tab)
+  const nDuyet = (orders ?? []).filter(o => o.trang_thai === 'cho_duyet').length
+  const nTT = (orders ?? []).filter(o => o.trang_thai === 'chua_tt').length
 
   return (
     <div className="h-full flex flex-col bg-ink-100">
-      <ScreenHeader title="Duyệt đơn hàng" />
+      <ScreenHeader title="Quản lý đơn hàng" />
       <div className="bg-brand-800 px-3 pb-2 flex gap-1.5">
-        <TabBtn active={tab === 'cho_duyet'} onClick={() => setTab('cho_duyet')}>Chờ duyệt{pending ? ` (${pending})` : ''}</TabBtn>
+        <TabBtn active={tab === 'cho_duyet'} onClick={() => setTab('cho_duyet')}>Chờ duyệt{nDuyet ? ` (${nDuyet})` : ''}</TabBtn>
+        <TabBtn active={tab === 'chua_tt'} onClick={() => setTab('chua_tt')}>Chờ TT{nTT ? ` (${nTT})` : ''}</TabBtn>
         <TabBtn active={tab === 'all'} onClick={() => setTab('all')}>Tất cả</TabBtn>
       </div>
 
@@ -51,13 +54,16 @@ export function OrderApprovalPage() {
         ) : list.length === 0 ? (
           <div className="flex flex-col items-center text-center text-ink-400 py-16">
             <Clock size={40} className="mb-3 text-ink-300" />
-            <div className="text-[14px] font-semibold text-ink-600">{tab === 'cho_duyet' ? 'Không có đơn chờ duyệt' : 'Chưa có đơn nào'}</div>
+            <div className="text-[14px] font-semibold text-ink-600">
+              {tab === 'cho_duyet' ? 'Không có đơn chờ duyệt' : tab === 'chua_tt' ? 'Không có đơn chờ thanh toán' : 'Chưa có đơn nào'}
+            </div>
           </div>
         ) : (
           list.map(o => (
-            <OrderCard key={o.id} o={o} busy={review.isPending}
+            <OrderCard key={o.id} o={o} busy={review.isPending || confirmPay.isPending}
               onApprove={() => review.mutate({ order: o, approve: true })}
-              onReject={() => setRejecting(o)} />
+              onReject={() => setRejecting(o)}
+              onConfirmPay={() => { if (confirm(`Xác nhận đã nhận thanh toán đơn ${o.so_bl || o.id.slice(0, 8).toUpperCase()}?`)) confirmPay.mutate(o) }} />
           ))
         )}
         <div className="pb-6" />
@@ -75,8 +81,8 @@ export function OrderApprovalPage() {
   )
 }
 
-function OrderCard({ o, busy, onApprove, onReject }: {
-  o: Order; busy: boolean; onApprove: () => void; onReject: () => void
+function OrderCard({ o, busy, onApprove, onReject, onConfirmPay }: {
+  o: Order; busy: boolean; onApprove: () => void; onReject: () => void; onConfirmPay: () => void
 }) {
   const st = ORDER_STATUS[o.trang_thai] ?? { label: o.trang_thai, tone: 'gray' }
   const ma = o.so_bl || o.id.slice(0, 8).toUpperCase()
@@ -111,6 +117,12 @@ function OrderCard({ o, busy, onApprove, onReject }: {
           <button onClick={onReject} disabled={busy} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-red-600 font-semibold text-[13px] active:bg-red-50 disabled:opacity-60"><X size={16} /> Từ chối</button>
           <button onClick={onApprove} disabled={busy} className="flex-1 flex items-center justify-center gap-1.5 py-3 text-white bg-brand-700 font-semibold text-[13px] active:bg-brand-800 disabled:opacity-60"><Check size={16} /> Duyệt</button>
         </div>
+      )}
+      {o.trang_thai === 'chua_tt' && (
+        <button onClick={onConfirmPay} disabled={busy}
+          className="w-full flex items-center justify-center gap-1.5 py-3 border-t border-ink-100 text-white bg-green-600 font-semibold text-[13px] active:bg-green-700 disabled:opacity-60">
+          <Banknote size={16} /> Đã nhận thanh toán
+        </button>
       )}
     </div>
   )
