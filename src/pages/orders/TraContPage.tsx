@@ -9,7 +9,7 @@ import { useCatalog, useCarriers } from '../../features/catalog'
 import { usePricing, matchPrice, withVat } from '../../features/pricing'
 import { useVatPercent, DEFAULT_VAT } from '../../features/settings'
 import { supabase } from '../../lib/supabase'
-import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
+import { DEPOTS, CARRIERS, CONT_TYPES, maxContQty } from '../../lib/options'
 import { normalizeCont, isValidContNo } from '../../lib/validate'
 
 const DRAFT_KEY = 'draft_tracont'
@@ -68,17 +68,26 @@ export function TraContPage() {
   const autoTotal = subtotal != null ? withVat(subtotal, vatPct) : null
 
   function addCont() {
+    if (!loaiCont) { setErr('Chọn loại cont trước khi nhập số cont.'); return }
+    // 1 xe chở tối đa: 20' → 2 cont, 40'/45' → 1 cont.
+    const cap = maxContQty(loaiCont)
     // Cho phép dán nhiều số cùng lúc (cách nhau bởi dấu cách/phẩy/xuống dòng)
     const parts = contInput.split(/[\s,;]+/).map(normalizeCont).filter(Boolean)
     const invalid: string[] = []
     const next = [...conts]
+    let full = false
     for (const p of parts) {
       if (!isValidContNo(p)) { invalid.push(p); continue }
-      if (!next.includes(p)) next.push(p)
+      if (next.includes(p)) continue
+      if (next.length >= cap) { full = true; break }
+      next.push(p)
     }
     setConts(next)
     setContInput('')
-    setErr(invalid.length ? `Số cont không hợp lệ (bỏ qua): ${invalid.join(', ')}` : '')
+    const msgs: string[] = []
+    if (invalid.length) msgs.push(`Số cont không hợp lệ (bỏ qua): ${invalid.join(', ')}`)
+    if (full) msgs.push(`1 xe chở tối đa ${cap} cont ${loaiCont}.`)
+    setErr(msgs.join(' '))
   }
   function removeCont(c: string) { setConts(conts.filter(x => x !== c)) }
   function setPhoto(i: number, u: string | null) { setPhotos(p => { const n = [...p]; n[i] = u; return n }) }

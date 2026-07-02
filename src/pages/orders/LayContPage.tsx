@@ -8,7 +8,7 @@ import { useCatalog, useCarriers } from '../../features/catalog'
 import { usePricing, matchPrice, withVat } from '../../features/pricing'
 import { useVatPercent, DEFAULT_VAT } from '../../features/settings'
 import { supabase } from '../../lib/supabase'
-import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
+import { DEPOTS, CARRIERS, CONT_TYPES, maxContQty } from '../../lib/options'
 
 const DRAFT_KEY = 'draft_laycont'
 function loadDraft(): Record<string, unknown> {
@@ -54,6 +54,13 @@ export function LayContPage() {
     }))
   }, [soBl, depot, hangTau, loaiCont, soLuong, vehicleId, manualDriverId, congTyHd, mst, phi, photos])
   const clearDraft = () => sessionStorage.removeItem(DRAFT_KEY)
+
+  // Khi đổi loại cont: kẹp số lượng trong khoảng cho phép (40' chỉ 1).
+  const maxQty = maxContQty(loaiCont)
+  useEffect(() => {
+    const m = maxContQty(loaiCont)
+    setSoLuong(prev => String(Math.min(Math.max(parseInt(prev, 10) || 1, 1), m)))
+  }, [loaiCont])
 
   const vehicle = useMemo(() => vehicles?.find(v => v.id === vehicleId), [vehicles, vehicleId])
   const assignedDriver = useMemo(() => drivers?.find(d => d.id === vehicle?.driver_id) || null, [drivers, vehicle])
@@ -126,8 +133,12 @@ export function LayContPage() {
               <Select value={loaiCont} onChange={setLoaiCont} options={contTypes} placeholder="Chọn loại" />
             </Field>
             <Field label="Số lượng" req>
-              <input value={soLuong} onChange={e => setSoLuong(e.target.value.replace(/\D/g, ''))}
-                inputMode="numeric" placeholder="1" className={inputCls} />
+              <select value={soLuong} onChange={e => setSoLuong(e.target.value)}
+                disabled={maxQty === 1} className={inputCls + (maxQty === 1 ? ' opacity-70' : '')}>
+                {Array.from({ length: maxQty }, (_, i) => i + 1).map(n => (
+                  <option key={n} value={String(n)}>{n}</option>
+                ))}
+              </select>
             </Field>
           </div>
         </Card>

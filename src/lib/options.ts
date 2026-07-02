@@ -13,6 +13,12 @@ export const CONT_TYPES = [
   "20'DC", "40'DC", "40'HC", "45'HC", "20'RF", "40'RF", "20'OT", "40'OT", "20'FR", "40'FR",
 ]
 
+// Số cont tối đa 1 xe chở được 1 lần: 20' → 2 cont/xe; 40'/45' → 1 cont/xe.
+export function maxContQty(loaiCont: string): number {
+  const size = parseInt(loaiCont.match(/\d+/)?.[0] ?? '', 10)
+  return size === 20 ? 2 : 1
+}
+
 // Nhãn trạng thái đơn
 export const ORDER_STATUS: Record<string, { label: string; tone: string }> = {
   cho_duyet: { label: 'Đang chờ duyệt', tone: 'amber' },

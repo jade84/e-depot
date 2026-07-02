@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ImagePlus, X, Loader2, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ImagePlus, X, Loader2, AlertTriangle, Camera, Image as ImageIcon } from 'lucide-react'
 import { uploadImage } from '../lib/storage'
 
 // Thanh tiêu đề màn hình con (có nút back)
@@ -93,9 +93,11 @@ export function PhotoUploadSlot({ url, onChange, bucket, userId, label }: {
   userId: string | null
   label?: string
 }) {
-  const ref = useRef<HTMLInputElement>(null)
+  const camRef = useRef<HTMLInputElement>(null)   // chụp bằng camera
+  const libRef = useRef<HTMLInputElement>(null)   // chọn từ thư viện
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [menu, setMenu] = useState(false)
 
   async function onPick(f: File) {
     if (!userId) return
@@ -110,11 +112,15 @@ export function PhotoUploadSlot({ url, onChange, bucket, userId, label }: {
     }
   }
 
+  const onInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''
+  }
+
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => ref.current?.click()}
+        onClick={() => setMenu(true)}
         disabled={busy}
         className="w-full aspect-square rounded-xl border-2 border-dashed border-ink-300 bg-ink-50 flex flex-col items-center justify-center gap-1 overflow-hidden active:bg-ink-100 transition"
       >
@@ -133,10 +139,28 @@ export function PhotoUploadSlot({ url, onChange, bucket, userId, label }: {
           <X size={14} />
         </button>
       )}
-      <input
-        ref={ref} type="file" accept="image/*" capture="environment" hidden
-        onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = '' }}
-      />
+
+      {/* Chọn: chụp ảnh hoặc lấy từ thư viện */}
+      {menu && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40" onClick={() => setMenu(false)}>
+          <div className="w-full max-w-[480px] bg-white rounded-t-3xl p-3 space-y-2" onClick={e => e.stopPropagation()}>
+            <button type="button" onClick={() => { setMenu(false); camRef.current?.click() }}
+              className="w-full h-12 rounded-xl bg-brand-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:bg-brand-800">
+              <Camera size={18} /> Chụp ảnh
+            </button>
+            <button type="button" onClick={() => { setMenu(false); libRef.current?.click() }}
+              className="w-full h-12 rounded-xl bg-ink-100 text-ink-700 font-semibold text-[15px] flex items-center justify-center gap-2 active:bg-ink-200">
+              <ImageIcon size={18} /> Chọn từ thư viện
+            </button>
+            <button type="button" onClick={() => setMenu(false)}
+              className="w-full h-11 rounded-xl text-ink-500 font-semibold text-[14px]">Huỷ</button>
+            <div className="pb-2" />
+          </div>
+        </div>
+      )}
+
+      <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={onInput} />
+      <input ref={libRef} type="file" accept="image/*" hidden onChange={onInput} />
     </div>
   )
 }
