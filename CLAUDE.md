@@ -35,12 +35,15 @@ Chưa có test framework (không có script `test`).
 - **SQL để trong `supabase/*.sql`** — chạy thủ công qua Dashboard SQL Editor (không có migration tự động):
   - `01_init.sql` users (phone/name/cccd) + trigger tạo hồ sơ khi signUp
   - `03_vehicles.sql`, `04_drivers.sql`, `05_orders.sql`, `06_catalog.sql` (bảng + RLS + storage bucket public)
+  - `07_pricing.sql` bảng `pricing` (bảng giá) — RLS: đọc chung, **ghi chỉ `role='admin'`**
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
 
 ## Data model (bảng)
-- `users` (hồ sơ, 1-1 auth.users) · `vehicles` (xe) · `drivers` (tài xế) · `orders` (Lấy/Trả cont) · `catalog` (danh mục dùng chung)
+- `users` (hồ sơ, 1-1 auth.users; `role` = `'driver'` mặc định / `'admin'`) · `vehicles` (xe) · `drivers` (tài xế) · `orders` (Lấy/Trả cont) · `catalog` (danh mục dùng chung) · `pricing` (bảng giá)
+- `pricing`: `(loai, loai_cont, depot?, hang_tau?) → don_gia` (phí/1 cont). `depot`/`hang_tau` = null nghĩa là áp dụng mọi giá trị. `matchPrice()` ưu tiên dòng cụ thể hơn.
+- **Admin** = `users.role = 'admin'` (set thủ công trong DB). Điểm vào Admin trên HomePage + trang chỉ hiện/cho phép khi `profile.role === 'admin'` (RLS chặn ghi ở tầng DB).
 - `vehicles.driver_id` → gán tài xế. `orders.loai` = `'lay'` | `'tra'`, `trang_thai` mặc định `cho_duyet` (giá trị dùng: `cho_duyet`, `huy`, …). `orders.phi_nang_ha` = phí (số tiền) → dùng cho trang Thanh toán.
 
 ## Kiến trúc (đọc nhanh để nắm)
@@ -63,6 +66,7 @@ Chưa có test framework (không có script `test`).
 - **Đơn hàng** (`/don-hang`): danh sách + hủy đơn.
 - **Chi tiết đơn** (`/don-hang/:id`): xem full thông tin đơn + ảnh.
 - **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đang hardcode trong `PaymentPage.tsx` (`BANK_INFO`) — dự kiến chuyển sang `catalog`.
+- **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing`. Form Lấy/Trả cont **tự điền `phi_nang_ha` = đơn giá × số lượng** khi có giá khớp (`matchPrice`), ô phí thành read-only; nếu chưa có giá thì tài xế nhập tay như cũ.
 
 ## Quy ước quan trọng (ĐỪNG phá vỡ)
 - **Ảnh: upload-NGAY khi chọn** (component `PhotoUploadSlot`) → state giữ URL (chuỗi), KHÔNG giữ File.
@@ -78,9 +82,9 @@ Chưa có test framework (không có script `test`).
 - Vercel: import repo + 2 env `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (đúng 1 dòng, không newline thừa).
 
 ## Việc còn lại / định hướng
-- Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại).
-- **Thanh toán**: chuyển `BANK_INFO` từ hardcode sang `catalog`; đơn giá `phi_nang_ha` do admin đặt (bảng giá).
-- **Trang Admin**: quản lý nhiều **depot**, **hãng tàu** cố định, **đơn giá** (CRUD bảng `catalog` + bảng giá). Có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
+- Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy `supabase/07_pricing.sql`** trên Dashboard trước khi dùng Bảng giá.
+- **Thanh toán**: chuyển `BANK_INFO` từ hardcode sang `catalog`.
+- **Trang Admin (còn lại)**: CRUD danh mục `catalog` (depot/hãng tàu/loại cont). Có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 
 ## Bối cảnh

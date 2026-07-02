@@ -6,6 +6,7 @@ import { useVehicles } from '../../features/vehicles'
 import { useDrivers } from '../../features/drivers'
 import { useCreateOrder } from '../../features/orders'
 import { useCatalog } from '../../features/catalog'
+import { usePricing, matchPrice } from '../../features/pricing'
 import { supabase } from '../../lib/supabase'
 import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
 import { normalizeCont, isValidContNo } from '../../lib/validate'
@@ -23,6 +24,7 @@ export function TraContPage() {
   const { data: depotList } = useCatalog('depot')
   const { data: carrierList } = useCatalog('carrier')
   const { data: contList } = useCatalog('cont_type')
+  const { data: prices } = usePricing()
   const depots = depotList?.length ? depotList : DEPOTS
   const carriers = carrierList?.length ? carrierList : CARRIERS
   const contTypes = contList?.length ? contList : CONT_TYPES
@@ -54,6 +56,10 @@ export function TraContPage() {
   const vehicle = useMemo(() => vehicles?.find(v => v.id === vehicleId), [vehicles, vehicleId])
   const assignedDriver = useMemo(() => drivers?.find(d => d.id === vehicle?.driver_id) || null, [drivers, vehicle])
   const driver = assignedDriver || drivers?.find(d => d.id === manualDriverId) || null
+
+  // Đơn giá theo bảng giá (admin) → tự tính phí nâng hạ theo số lượng cont.
+  const unitPrice = matchPrice(prices, { loai: 'tra', loai_cont: loaiCont, depot, hang_tau: hangTau })
+  const autoTotal = unitPrice != null ? unitPrice * conts.length : null
 
   function addCont() {
     // Cho phép dán nhiều số cùng lúc (cách nhau bởi dấu cách/phẩy/xuống dòng)
@@ -93,7 +99,7 @@ export function TraContPage() {
         driver_id: driver.id, tai_xe_ten: driver.name, tai_xe_cccd: driver.cccd,
         cong_ty_hd: congTyHd.trim(), mst: mst.trim(),
         photos: anh,
-        phi_nang_ha: parseFloat(phi) || 0,
+        phi_nang_ha: autoTotal != null ? autoTotal : (parseFloat(phi) || 0),
       })
       clearDraft()
       nav('/don-hang', { replace: true })
@@ -180,9 +186,18 @@ export function TraContPage() {
               ))}
             </div>
           </Field>
-          <Field label="Phí nâng hạ (nếu biết)">
-            <input value={phi} onChange={e => setPhi(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="0" className={inputCls} />
-          </Field>
+          {autoTotal != null ? (
+            <Field label="Phí nâng hạ (tự tính theo bảng giá)">
+              <div className="h-12 px-4 rounded-xl border border-brand-200 bg-brand-50 flex items-center justify-between">
+                <span className="text-[15px] font-bold text-brand-800">{autoTotal.toLocaleString('vi-VN')} đ</span>
+                <span className="text-[11px] text-ink-400">{unitPrice!.toLocaleString('vi-VN')}đ × {conts.length}</span>
+              </div>
+            </Field>
+          ) : (
+            <Field label="Phí nâng hạ (nếu biết)">
+              <input value={phi} onChange={e => setPhi(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="0" className={inputCls} />
+            </Field>
+          )}
         </Card>
 
         {err && <div className="text-[12.5px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}

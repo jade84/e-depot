@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Truck, Users, LogIn, LogOut, ClipboardList,
-  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search,
+  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search, Tags,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -24,6 +24,11 @@ const NGHIEP_VU: Item[] = [
 const QUAN_LY: Item[] = [
   { label: 'Quản lý phương tiện', icon: Truck,  color: '#dc2626', bg: '#fee2e2', to: '/phuong-tien' },
   { label: 'Quản lý nhân sự',     icon: Users,  color: '#2563eb', bg: '#dbeafe', to: '/nhan-su' },
+]
+
+// Quản trị (chỉ hiện với admin)
+const ADMIN: Item[] = [
+  { label: 'Bảng giá', icon: Tags, color: '#0d9488', bg: '#ccfbf1', to: '/admin/bang-gia' },
 ]
 
 function Grid({ title, items }: { title: string; items: Item[] }) {
@@ -79,6 +84,7 @@ export function HomePage() {
 
       <Grid title="Nghiệp vụ nhà xe" items={NGHIEP_VU} />
       <Grid title="Quản lý" items={QUAN_LY} />
+      {profile?.role === 'admin' && <Grid title="Quản trị" items={ADMIN} />}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useVehicles } from '../../features/vehicles'
 import { useDrivers } from '../../features/drivers'
 import { useCreateOrder } from '../../features/orders'
 import { useCatalog } from '../../features/catalog'
+import { usePricing, matchPrice } from '../../features/pricing'
 import { supabase } from '../../lib/supabase'
 import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
 
@@ -23,6 +24,7 @@ export function LayContPage() {
   const { data: depotList } = useCatalog('depot')
   const { data: carrierList } = useCatalog('carrier')
   const { data: contList } = useCatalog('cont_type')
+  const { data: prices } = usePricing()
   const depots = depotList?.length ? depotList : DEPOTS
   const carriers = carrierList?.length ? carrierList : CARRIERS
   const contTypes = contList?.length ? contList : CONT_TYPES
@@ -54,6 +56,11 @@ export function LayContPage() {
   const assignedDriver = useMemo(() => drivers?.find(d => d.id === vehicle?.driver_id) || null, [drivers, vehicle])
   const driver = assignedDriver || drivers?.find(d => d.id === manualDriverId) || null
 
+  // Đơn giá theo bảng giá (admin) → tự tính phí nâng hạ. null = chưa có giá → nhập tay.
+  const soLuongNum = parseInt(soLuong, 10) || 0
+  const unitPrice = matchPrice(prices, { loai: 'lay', loai_cont: loaiCont, depot, hang_tau: hangTau })
+  const autoTotal = unitPrice != null ? unitPrice * soLuongNum : null
+
   function setPhoto(i: number, u: string | null) {
     setPhotos(p => { const n = [...p]; n[i] = u; return n })
   }
@@ -81,7 +88,7 @@ export function LayContPage() {
         driver_id: driver.id, tai_xe_ten: driver.name, tai_xe_cccd: driver.cccd,
         cong_ty_hd: congTyHd.trim(), mst: mst.trim(),
         photos: anhLenh,
-        phi_nang_ha: parseFloat(phi) || 0,
+        phi_nang_ha: autoTotal != null ? autoTotal : (parseFloat(phi) || 0),
       })
       clearDraft()
       nav('/don-hang', { replace: true })
@@ -169,10 +176,19 @@ export function LayContPage() {
               ))}
             </div>
           </Field>
-          <Field label="Phí nâng hạ (nếu biết)">
-            <input value={phi} onChange={e => setPhi(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric"
-              placeholder="0" className={inputCls} />
-          </Field>
+          {autoTotal != null ? (
+            <Field label="Phí nâng hạ (tự tính theo bảng giá)">
+              <div className="h-12 px-4 rounded-xl border border-brand-200 bg-brand-50 flex items-center justify-between">
+                <span className="text-[15px] font-bold text-brand-800">{autoTotal.toLocaleString('vi-VN')} đ</span>
+                <span className="text-[11px] text-ink-400">{unitPrice!.toLocaleString('vi-VN')}đ × {soLuongNum}</span>
+              </div>
+            </Field>
+          ) : (
+            <Field label="Phí nâng hạ (nếu biết)">
+              <input value={phi} onChange={e => setPhi(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric"
+                placeholder="0" className={inputCls} />
+            </Field>
+          )}
         </Card>
 
         {err && <div className="text-[12.5px] text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
