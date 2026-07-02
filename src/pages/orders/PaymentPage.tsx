@@ -2,15 +2,8 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Copy, Check, Loader2, AlertCircle, QrCode, Banknote } from 'lucide-react'
 import { useOrder } from '../../features/orders'
+import { useBankInfo, DEFAULT_BANK } from '../../features/settings'
 import { ScreenHeader } from '../../components/mobile'
-
-// ── Thông tin tài khoản (hardcode tạm, sau có thể đọc từ catalog) ──────────────
-const BANK_INFO = {
-  bankId: 'VCB',           // mã ngân hàng VietQR (VCB, TCB, ACB, MB, ...)
-  accountNo: '1234567890', // số tài khoản
-  accountName: 'CONG TY GREENLOGISTICS',
-  bankName: 'Vietcombank',
-}
 
 // ── Hook copy ─────────────────────────────────────────────────────────────────
 function useCopy() {
@@ -59,7 +52,9 @@ function CopyRow({ label, value, copyKey, copied, onCopy }: {
 export function PaymentPage() {
   const { id } = useParams<{ id: string }>()
   const { data: o, isLoading, error } = useOrder(id ?? '')
+  const { data: bank } = useBankInfo()
   const { copied, copy } = useCopy()
+  const BANK_INFO = bank ?? DEFAULT_BANK
 
   if (isLoading) {
     return (

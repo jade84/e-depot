@@ -37,6 +37,7 @@ Chưa có test framework (không có script `test`).
   - `03_vehicles.sql`, `04_drivers.sql`, `05_orders.sql`, `06_catalog.sql` (bảng + RLS + storage bucket public)
   - `07_pricing.sql` bảng `pricing` (bảng giá) — RLS: đọc chung, **ghi chỉ `role='admin'`**
   - `08_catalog_admin.sql` mở quyền admin cho `catalog` (đọc cả dòng tắt + ghi)
+  - `09_settings.sql` bảng `settings` key-value jsonb (đọc chung, ghi admin) — chứa `bank_info`
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
@@ -66,7 +67,8 @@ Chưa có test framework (không có script `test`).
 - **Lấy cont rỗng** (`/lay-cont`) và **Trả cont rỗng** (`/tra-cont`, nhập nhiều số cont ISO 6346) → tạo `orders`.
 - **Đơn hàng** (`/don-hang`): danh sách + hủy đơn.
 - **Chi tiết đơn** (`/don-hang/:id`): xem full thông tin đơn + ảnh.
-- **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đang hardcode trong `PaymentPage.tsx` (`BANK_INFO`) — dự kiến chuyển sang `catalog`.
+- **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đọc từ `settings.bank_info` (`useBankInfo`, fallback `DEFAULT_BANK`).
+- **Admin — Ngân hàng** (`/admin/ngan-hang`, chỉ admin): sửa `bank_info` (mã VietQR, số TK, tên chủ TK, tên NH) + xem trước QR. `useSaveBankInfo`.
 - **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing` + **import/export CSV** (`src/lib/csv.ts`, `useImportPricing` upsert theo `loai+loai_cont+depot+hang_tau`). Form Lấy/Trả cont **tự điền `phi_nang_ha` = đơn giá × số lượng** khi có giá khớp (`matchPrice`), ô phí thành read-only; nếu chưa có giá thì tài xế nhập tay như cũ.
 - **Admin — Danh mục** (`/admin/danh-muc`, chỉ admin): CRUD `catalog` theo tab depot/hãng tàu/loại cont (`useCatalogAdmin` đọc cả dòng tắt, `useUpsertCatalog`/`useDeleteCatalog`). Form nghiệp vụ tự cập nhật theo (`useCatalog`).
 
@@ -84,8 +86,7 @@ Chưa có test framework (không có script `test`).
 - Vercel: import repo + 2 env `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (đúng 1 dòng, không newline thừa).
 
 ## Việc còn lại / định hướng
-- Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy `supabase/07_pricing.sql`** trên Dashboard trước khi dùng Bảng giá.
-- **Thanh toán**: chuyển `BANK_INFO` từ hardcode sang `catalog`.
+- Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy các SQL mới trên Dashboard**: `07_pricing.sql`, `08_catalog_admin.sql`, `09_settings.sql`.
 - **Trang Admin (còn lại)**: có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 

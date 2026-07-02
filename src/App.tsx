@@ -20,6 +20,7 @@ import { OrderDetailPage } from './pages/orders/OrderDetailPage'
 import { PaymentPage } from './pages/orders/PaymentPage'
 import { PricingPage } from './pages/admin/PricingPage'
 import { CatalogPage } from './pages/admin/CatalogPage'
+import { BankSettingsPage } from './pages/admin/BankSettingsPage'
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/nhan-su/them" element={<DriverAddPage />} />
               <Route path="/admin/bang-gia" element={<PricingPage />} />
               <Route path="/admin/danh-muc" element={<CatalogPage />} />
+              <Route path="/admin/ngan-hang" element={<BankSettingsPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
