@@ -165,8 +165,13 @@ export function TraContPage() {
           <Field label="Chọn xe (biển số)" req>
             <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className={inputCls}>
               <option value="">— Chọn xe —</option>
-              {vehicles?.map(v => <option key={v.id} value={v.id}>{v.plate}{v.name ? ` · ${v.name}` : ''}</option>)}
+              {vehicles?.filter(v => v.status === 'kich_hoat').map(v => <option key={v.id} value={v.id}>{v.plate}{v.name ? ` · ${v.name}` : ''}</option>)}
             </select>
+            {vehicles && vehicles.filter(v => v.status === 'kich_hoat').length === 0 && (
+              <p className="text-[11px] text-amber-600 mt-1">
+                {vehicles.length === 0 ? 'Chưa có xe. Thêm xe ở Quản lý phương tiện.' : 'Xe đang chờ duyệt — chỉ dùng được xe đã kích hoạt.'}
+              </p>
+            )}
           </Field>
           {vehicle && (
             assignedDriver ? (

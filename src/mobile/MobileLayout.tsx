@@ -1,12 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { Info, Bell, ClipboardList, User } from 'lucide-react'
+import { useUnreadCount } from '../features/notifications'
 
-type Tab = { to: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; end?: boolean }
+type Tab = { to: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; end?: boolean; badge?: number }
 
-const LEFT: Tab[] = [
-  { to: '/thong-tin', label: 'Thông tin', icon: Info },
-  { to: '/thong-bao', label: 'Thông báo', icon: Bell },
-]
 const RIGHT: Tab[] = [
   { to: '/don-hang',  label: 'Đơn hàng',  icon: ClipboardList },
   { to: '/tai-khoan', label: 'Tài khoản', icon: User },
@@ -18,17 +15,34 @@ function TabLink({ t }: { t: Tab }) {
     <NavLink
       to={t.to} end={t.end}
       className={({ isActive }) =>
-        `flex flex-col items-center justify-center gap-0.5 flex-1 py-2 text-[10.5px] font-medium transition-colors ${
+        `relative flex flex-col items-center justify-center gap-0.5 flex-1 py-2 text-[10.5px] font-medium transition-colors ${
           isActive ? 'text-brand-700' : 'text-ink-400'
         }`
       }
     >
-      {({ isActive }) => (<><Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} /><span>{t.label}</span></>)}
+      {({ isActive }) => (
+        <>
+          <div className="relative">
+            <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} />
+            {!!t.badge && (
+              <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {t.badge > 9 ? '9+' : t.badge}
+              </span>
+            )}
+          </div>
+          <span>{t.label}</span>
+        </>
+      )}
     </NavLink>
   )
 }
 
 export function MobileLayout() {
+  const { data: unread } = useUnreadCount()
+  const LEFT: Tab[] = [
+    { to: '/thong-tin', label: 'Thông tin', icon: Info },
+    { to: '/thong-bao', label: 'Thông báo', icon: Bell, badge: unread ?? 0 },
+  ]
   return (
     <div className="h-full flex flex-col bg-ink-100 mx-auto max-w-[480px] shadow-xl">
       <main className="flex-1 overflow-y-auto no-scrollbar pb-2">

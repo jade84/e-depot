@@ -89,12 +89,14 @@ export function VehiclesPage() {
 }
 
 function StatusBadge({ status }: { status: Vehicle['status'] }) {
-  const on = status === 'kich_hoat'
+  const map = {
+    kich_hoat: { label: 'Đã kích hoạt', cls: 'bg-green-100 text-green-700' },
+    cho_duyet: { label: 'Chờ duyệt', cls: 'bg-amber-100 text-amber-700' },
+    tu_choi:   { label: 'Bị từ chối', cls: 'bg-red-100 text-red-700' },
+  }[status] ?? { label: status, cls: 'bg-ink-100 text-ink-500' }
   return (
-    <span className={`inline-block mt-1 text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
-      on ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-    }`}>
-      {on ? 'Đã kích hoạt' : 'Chờ duyệt'}
+    <span className={`inline-block mt-1 text-[10.5px] font-bold px-2 py-0.5 rounded-full ${map.cls}`}>
+      {map.label}
     </span>
   )
 }
