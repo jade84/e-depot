@@ -67,6 +67,8 @@ export function HomePage() {
   const { profile, can } = useAuth()
   const displayName = profile?.name?.trim() || profile?.phone || 'Người dùng'
   const adminItems = ADMIN.filter(i => !i.perm || can(i.perm))
+  // Nhân viên (staff) = người của công ty, không dùng nghiệp vụ nhà xe.
+  const isNhaXe = profile?.role !== 'staff'
   return (
     <div className="pb-4">
       {/* Header */}
@@ -92,8 +94,8 @@ export function HomePage() {
         </div>
       </div>
 
-      <Grid title="Nghiệp vụ nhà xe" items={NGHIEP_VU} />
-      <Grid title="Quản lý" items={QUAN_LY} />
+      {isNhaXe && <Grid title="Nghiệp vụ nhà xe" items={NGHIEP_VU} />}
+      {isNhaXe && <Grid title="Quản lý" items={QUAN_LY} />}
       {adminItems.length > 0 && <Grid title="Quản trị" items={adminItems} />}
     </div>
   )
