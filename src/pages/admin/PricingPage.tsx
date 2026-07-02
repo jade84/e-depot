@@ -1,13 +1,24 @@
-import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, ShieldAlert } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, ShieldAlert, Download, Upload } from 'lucide-react'
 import { ScreenHeader } from '../../components/mobile'
 import { useAuth } from '../../lib/AuthContext'
 import { useCatalog } from '../../features/catalog'
 import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
+import { parseCsv, buildCsv, downloadCsv } from '../../lib/csv'
 import {
-  usePricing, useUpsertPricing, useDeletePricing,
+  usePricing, useUpsertPricing, useDeletePricing, useImportPricing,
   type Pricing, type PricingInput,
 } from '../../features/pricing'
+
+const CSV_HEADER = ['loai', 'loai_cont', 'depot', 'hang_tau', 'don_gia', 'active']
+
+// 'Lấy'/'lay'/'L' → 'lay'; 'Trả'/'tra'/'T' → 'tra'
+function normLoai(s: string): 'lay' | 'tra' | null {
+  const x = s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  if (x.startsWith('lay') || x === 'l') return 'lay'
+  if (x.startsWith('tra') || x === 't') return 'tra'
+  return null
+}
 
 const inputCls = 'w-full h-11 px-3 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white transition'
 
@@ -21,7 +32,12 @@ export function PricingPage() {
   const { profile } = useAuth()
   const { data: rows, isLoading } = usePricing()
   const del = useDeletePricing()
+  const imp = useImportPricing()
+  const { data: contList } = useCatalog('cont_type')
+  const contTypes = contList?.length ? contList : CONT_TYPES
+  const fileRef = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState<PricingInput | null>(null)
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const isAdmin = profile?.role === 'admin'
 
@@ -48,6 +64,68 @@ export function PricingPage() {
     await del.mutateAsync(r.id)
   }
 
+  // Tải template CSV: mỗi loại cont × (Lấy/Trả), điền sẵn giá hiện có (nếu có).
+  function handleDownload() {
+    const body: (string | number)[][] = []
+    for (const loai of ['lay', 'tra'] as const) {
+      for (const ct of contTypes) {
+        const cur = (rows ?? []).find(r => r.loai === loai && r.loai_cont === ct && !r.depot && !r.hang_tau)
+        body.push([loai, ct, '', '', cur ? cur.don_gia : '', 'TRUE'])
+      }
+    }
+    downloadCsv('bang-gia-template.csv', buildCsv(CSV_HEADER, body))
+  }
+
+  // Import CSV → upsert theo (loai, loai_cont, depot, hang_tau). Bỏ qua ô giá trống.
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setMsg(null)
+    try {
+      const grid = parseCsv(await file.text())
+      if (grid.length < 2) { setMsg({ type: 'err', text: 'File rỗng hoặc chỉ có dòng tiêu đề.' }); return }
+      const head = grid[0].map(h => h.trim().toLowerCase())
+      const col = (aliases: string[]) => head.findIndex(h => aliases.includes(h))
+      const iLoai = col(['loai', 'loại', 'nghiep_vu'])
+      const iCont = col(['loai_cont', 'loại cont', 'cont'])
+      const iDepot = col(['depot'])
+      const iHang = col(['hang_tau', 'hãng tàu', 'hang tau'])
+      const iGia = col(['don_gia', 'đơn giá', 'gia', 'don gia'])
+      const iAct = col(['active', 'bật', 'bat'])
+      if (iLoai < 0 || iCont < 0 || iGia < 0) {
+        setMsg({ type: 'err', text: 'Thiếu cột bắt buộc: loai, loai_cont, don_gia.' }); return
+      }
+      const inputs: PricingInput[] = []
+      let bad = 0
+      for (let r = 1; r < grid.length; r++) {
+        const c = grid[r]
+        const giaRaw = (c[iGia] ?? '').replace(/[^\d]/g, '')
+        if (giaRaw === '') continue // ô giá trống → bỏ qua dòng
+        const loai = normLoai(c[iLoai] ?? '')
+        const cont = (c[iCont] ?? '').trim()
+        if (!loai || !cont) { bad++; continue }
+        const actRaw = (iAct >= 0 ? (c[iAct] ?? '') : '').trim().toLowerCase()
+        inputs.push({
+          loai,
+          loai_cont: cont,
+          depot: (iDepot >= 0 ? (c[iDepot] ?? '').trim() : '') || null,
+          hang_tau: (iHang >= 0 ? (c[iHang] ?? '').trim() : '') || null,
+          don_gia: parseInt(giaRaw, 10) || 0,
+          active: !['false', '0', 'off', 'tắt', 'tat', 'khong', 'không', 'no'].includes(actRaw),
+        })
+      }
+      if (!inputs.length) { setMsg({ type: 'err', text: 'Không có dòng hợp lệ (nhớ điền cột don_gia).' }); return }
+      const res = await imp.mutateAsync(inputs)
+      setMsg({
+        type: 'ok',
+        text: `Đã nhập: ${res.inserted} thêm mới, ${res.updated} cập nhật.` + (bad ? ` Bỏ qua ${bad} dòng lỗi.` : ''),
+      })
+    } catch (err) {
+      setMsg({ type: 'err', text: 'Lỗi import: ' + (err as Error).message })
+    }
+  }
+
   return (
     <div className="h-full flex flex-col bg-ink-100">
       <ScreenHeader
@@ -63,6 +141,29 @@ export function PricingPage() {
       />
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-4 space-y-4">
+        {/* Toolbar: template + import CSV */}
+        <div className="bg-white rounded-2xl p-3 shadow-sm">
+          <div className="flex gap-2">
+            <button onClick={handleDownload}
+              className="flex-1 h-10 rounded-xl border border-ink-200 text-ink-700 text-[13px] font-semibold flex items-center justify-center gap-1.5 active:bg-ink-100">
+              <Download size={16} /> Tải template
+            </button>
+            <button onClick={() => fileRef.current?.click()} disabled={imp.isPending}
+              className="flex-1 h-10 rounded-xl bg-brand-700 text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 active:bg-brand-800 disabled:opacity-60">
+              {imp.isPending ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Import CSV
+            </button>
+            <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={handleFile} />
+          </div>
+          <p className="text-[10.5px] text-ink-400 mt-2 leading-snug">
+            Tải template → điền cột <b>don_gia</b> bằng Excel → Import. Cột <b>depot</b>/<b>hang_tau</b> bỏ trống = áp dụng mọi giá trị.
+          </p>
+          {msg && (
+            <div className={`mt-2 text-[12px] rounded-lg px-3 py-2 ${msg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+              {msg.text}
+            </div>
+          )}
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 text-ink-400 text-sm py-10">
             <Loader2 size={18} className="animate-spin" /> Đang tải…

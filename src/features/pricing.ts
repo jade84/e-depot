@@ -69,6 +69,51 @@ export function useDeletePricing() {
   })
 }
 
+// Import hàng loạt từ CSV: khớp theo (loai, loai_cont, depot, hang_tau) →
+// có thì update, chưa có thì insert. Trả số dòng thêm/cập nhật.
+export function useImportPricing() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (rows: PricingInput[]): Promise<{ inserted: number; updated: number }> => {
+      const { data: existing, error: e1 } = await supabase
+        .from('pricing').select('id, loai, loai_cont, depot, hang_tau')
+      if (e1) throw e1
+      const key = (r: { loai: string; loai_cont: string; depot: string | null; hang_tau: string | null }) =>
+        `${r.loai}|${r.loai_cont}|${r.depot ?? ''}|${r.hang_tau ?? ''}`
+      const idByKey = new Map(
+        (existing ?? []).map(e => [key(e as Pricing), (e as Pricing).id]),
+      )
+
+      const toInsert: Omit<Pricing, 'id' | 'created_at'>[] = []
+      let updated = 0
+      for (const r of rows) {
+        const row = {
+          loai: r.loai,
+          loai_cont: r.loai_cont,
+          depot: r.depot || null,
+          hang_tau: r.hang_tau || null,
+          don_gia: r.don_gia,
+          active: r.active,
+        }
+        const id = idByKey.get(key(row))
+        if (id) {
+          const { error } = await supabase.from('pricing').update(row).eq('id', id)
+          if (error) throw error
+          updated++
+        } else {
+          toInsert.push(row)
+        }
+      }
+      if (toInsert.length) {
+        const { error } = await supabase.from('pricing').insert(toInsert)
+        if (error) throw error
+      }
+      return { inserted: toInsert.length, updated }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pricing'] }),
+  })
+}
+
 // Tìm đơn giá /1 cont khớp nhất. Dòng có depot/hãng tàu cụ thể được ưu tiên
 // hơn dòng "mọi depot/mọi hãng tàu" (null). Trả null nếu chưa có giá.
 export function matchPrice(
