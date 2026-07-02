@@ -43,6 +43,19 @@ export type NewOrder = {
   phi_nang_ha: number
 }
 
+export function useOrder(id: string) {
+  return useQuery({
+    queryKey: ['orders', id],
+    queryFn: async (): Promise<Order> => {
+      const { data, error } = await supabase
+        .from('orders').select('*').eq('id', id).single()
+      if (error) throw error
+      return data as Order
+    },
+    enabled: !!id,
+  })
+}
+
 export function useOrders() {
   return useQuery({
     queryKey: ['orders'],

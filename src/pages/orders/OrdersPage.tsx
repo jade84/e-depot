@@ -58,11 +58,15 @@ export function OrdersPage() {
 }
 
 function OrderCard({ o, onCancel, canceling }: { o: Order; onCancel: () => void; canceling: boolean }) {
+  const nav = useNavigate()
   const st = ORDER_STATUS[o.trang_thai] ?? { label: o.trang_thai, tone: 'gray' }
   const isLay = o.loai === 'lay'
   const date = new Date(o.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   return (
-    <div className="bg-white rounded-2xl p-3.5 shadow-sm">
+    <div
+      className="bg-white rounded-2xl p-3.5 shadow-sm active:bg-ink-50 transition cursor-pointer"
+      onClick={() => nav(`/don-hang/${o.id}`)}
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 font-bold text-[13.5px] text-ink-900">
           {isLay ? <ArrowUpFromLine size={15} className="text-green-600" /> : <ArrowDownToLine size={15} className="text-blue-600" />}
@@ -92,7 +96,7 @@ function OrderCard({ o, onCancel, canceling }: { o: Order; onCancel: () => void;
           {o.phi_nang_ha > 0 ? o.phi_nang_ha.toLocaleString('vi-VN') + ' đ' : '—'}
         </div>
         {o.trang_thai === 'cho_duyet' && (
-          <button onClick={onCancel} disabled={canceling}
+          <button onClick={e => { e.stopPropagation(); onCancel() }} disabled={canceling}
             className="text-[12px] font-semibold text-red-600 px-3 py-1.5 rounded-lg bg-red-50 active:bg-red-100">
             Hủy đơn
           </button>

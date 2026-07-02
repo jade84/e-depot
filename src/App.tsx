@@ -16,6 +16,8 @@ import { DriverAddPage } from './pages/drivers/DriverAddPage'
 import { LayContPage } from './pages/orders/LayContPage'
 import { TraContPage } from './pages/orders/TraContPage'
 import { OrdersPage } from './pages/orders/OrdersPage'
+import { OrderDetailPage } from './pages/orders/OrderDetailPage'
+import { PaymentPage } from './pages/orders/PaymentPage'
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -64,6 +66,8 @@ export default function App() {
               <Route path="/lay-cont" element={<LayContPage />} />
               <Route path="/tra-cont" element={<TraContPage />} />
               <Route path="/don-hang" element={<OrdersPage />} />
+              <Route path="/don-hang/:id" element={<OrderDetailPage />} />
+              <Route path="/don-hang/:id/thanh-toan" element={<PaymentPage />} />
               <Route path="/phuong-tien" element={<VehiclesPage />} />
               <Route path="/phuong-tien/them" element={<VehicleAddPage />} />
               <Route path="/phuong-tien/:id/gan-tai-xe" element={<AssignDriverPage />} />

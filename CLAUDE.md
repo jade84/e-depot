@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # e-Depot — Ghi chú dự án (cho Claude)
 
 App **mobile PWA** cho **GreenLogistics** — số hoá nghiệp vụ depot container cho **nhà xe / tài xế**
@@ -18,8 +22,11 @@ App **mobile PWA** cho **GreenLogistics** — số hoá nghiệp vụ depot cont
 $env:PATH = "C:\Program Files\nodejs;$env:APPDATA\npm;$env:PATH"
 pnpm install    # dùng CI=true nếu lỗi TTY
 pnpm dev        # server host=true, mở được từ điện thoại cùng WiFi
-pnpm build      # tsc + vite build (luôn chạy để kiểm lỗi TS trước khi báo xong)
+pnpm build      # tsc -b && vite build (luôn chạy để kiểm lỗi TS trước khi báo xong)
+pnpm lint       # oxlint
+pnpm preview    # xem thử bản build
 ```
+Chưa có test framework (không có script `test`).
 
 ## Supabase
 - Project ref: **vjrzqnbnydmrpjypoyzc** — URL `https://vjrzqnbnydmrpjypoyzc.supabase.co`
@@ -34,7 +41,18 @@ pnpm build      # tsc + vite build (luôn chạy để kiểm lỗi TS trước 
 
 ## Data model (bảng)
 - `users` (hồ sơ, 1-1 auth.users) · `vehicles` (xe) · `drivers` (tài xế) · `orders` (Lấy/Trả cont) · `catalog` (danh mục dùng chung)
-- `vehicles.driver_id` → gán tài xế. `orders.loai` = `'lay'` | `'tra'`, `trang_thai` mặc định `cho_duyet`.
+- `vehicles.driver_id` → gán tài xế. `orders.loai` = `'lay'` | `'tra'`, `trang_thai` mặc định `cho_duyet` (giá trị dùng: `cho_duyet`, `huy`, …). `orders.phi_nang_ha` = phí (số tiền) → dùng cho trang Thanh toán.
+
+## Kiến trúc (đọc nhanh để nắm)
+- **Data layer = `src/features/<domain>.ts`**: mỗi domain export các custom hook React Query bọc quanh `supabase` (từ `src/lib/supabase.ts`). Quy ước:
+  - `useX()` / `useXList()` → `useQuery`, `queryKey` là `['orders']`, `['orders', id]`, …
+  - `useCreateX` / `useCancelX` / `useDeleteX` → `useMutation`, `onSuccess` gọi `qc.invalidateQueries({ queryKey: [...] })`.
+  - Insert luôn gắn `owner_id = auth.uid()` (khớp RLS). Type `X` (bản ghi DB) và `NewX` (payload tạo) khai báo cùng file.
+- **Auth (`src/lib/AuthContext.tsx`)**: `AuthProvider` bọc toàn app, hook `useAuth()` trả `{ profile, loading, ready, signIn, signUp, signInDemo, signOut }`. SĐT → email nội bộ qua `toEmail()`. **Chế độ demo** lưu ở `localStorage` (`edepot_demo_profile`) khi Supabase chưa cấu hình — kiểm tra bằng `isSupabaseReady`.
+- **Routing (`src/App.tsx`)**: `/login`, `/register` public. Phần còn lại bọc trong `ProtectedRoute` và chia **2 nhóm layout**:
+  1. Có **bottom nav** (`MobileLayout` trong `src/mobile/`): `/`, `/tin-tuc`, `/thong-bao`, `/tai-khoan`.
+  2. **Full-screen** (không nav, khung `max-w-[480px]`): các trang nghiệp vụ `/lay-cont`, `/tra-cont`, `/don-hang`, `/don-hang/:id`, `/don-hang/:id/thanh-toan`, `/phuong-tien*`, `/nhan-su*`.
+- **UI dùng chung**: `src/components/mobile.tsx` (`ScreenHeader` có nút back `nav(-1)`, `PhotoSlot`, …). Icon: `lucide-react`.
 
 ## Tính năng đã xong
 - Auth: đăng ký (tên/SĐT/CCCD/mật khẩu) + đăng nhập bằng SĐT. Có chế độ demo khi thiếu Supabase.
@@ -43,6 +61,8 @@ pnpm build      # tsc + vite build (luôn chạy để kiểm lỗi TS trước 
 - **Quản lý nhân sự**: thêm/xoá tài xế (ảnh khuôn mặt + CCCD trước/sau). **Quét QR CCCD/Căn cước** (mặt sau với thẻ mới) tự điền + **đối chiếu** khi lưu.
 - **Lấy cont rỗng** (`/lay-cont`) và **Trả cont rỗng** (`/tra-cont`, nhập nhiều số cont ISO 6346) → tạo `orders`.
 - **Đơn hàng** (`/don-hang`): danh sách + hủy đơn.
+- **Chi tiết đơn** (`/don-hang/:id`): xem full thông tin đơn + ảnh.
+- **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đang hardcode trong `PaymentPage.tsx` (`BANK_INFO`) — dự kiến chuyển sang `catalog`.
 
 ## Quy ước quan trọng (ĐỪNG phá vỡ)
 - **Ảnh: upload-NGAY khi chọn** (component `PhotoUploadSlot`) → state giữ URL (chuỗi), KHÔNG giữ File.
@@ -59,8 +79,7 @@ pnpm build      # tsc + vite build (luôn chạy để kiểm lỗi TS trước 
 
 ## Việc còn lại / định hướng
 - Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại).
-- **Chi tiết đơn** (mở xem full + ảnh phóng to).
-- **Thanh toán**: hiện QR + nội dung CK + số TK để copy (như app mẫu). Đơn giá tính sau (admin đặt bảng giá).
+- **Thanh toán**: chuyển `BANK_INFO` từ hardcode sang `catalog`; đơn giá `phi_nang_ha` do admin đặt (bảng giá).
 - **Trang Admin**: quản lý nhiều **depot**, **hãng tàu** cố định, **đơn giá** (CRUD bảng `catalog` + bảng giá). Có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 
