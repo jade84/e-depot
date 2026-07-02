@@ -5,7 +5,7 @@ import { ScreenHeader, PhotoUploadSlot, FeeBreakdown } from '../../components/mo
 import { useVehicles } from '../../features/vehicles'
 import { useDrivers } from '../../features/drivers'
 import { useCreateOrder } from '../../features/orders'
-import { useCatalog } from '../../features/catalog'
+import { useCatalog, useCarriers } from '../../features/catalog'
 import { usePricing, matchPrice, withVat } from '../../features/pricing'
 import { useVatPercent, DEFAULT_VAT } from '../../features/settings'
 import { supabase } from '../../lib/supabase'
@@ -27,6 +27,7 @@ export function TraContPage() {
   const { data: contList } = useCatalog('cont_type')
   const { data: prices } = usePricing()
   const { data: vat } = useVatPercent()
+  const { data: carriersInfo } = useCarriers()
   const depots = depotList?.length ? depotList : DEPOTS
   const carriers = carrierList?.length ? carrierList : CARRIERS
   const contTypes = contList?.length ? contList : CONT_TYPES
@@ -61,7 +62,8 @@ export function TraContPage() {
 
   // Đơn giá bảng giá (admin) là CHƯA VAT → phí = tạm tính × (1 + VAT).
   const vatPct = vat ?? DEFAULT_VAT
-  const unitPrice = matchPrice(prices, { loai_cont: loaiCont, depot, hang_tau: hangTau })
+  const carrierGroup = carriersInfo?.find(c => c.name === hangTau)?.nhom ?? null
+  const unitPrice = matchPrice(prices, { loai_cont: loaiCont, depot, carrierGroup })
   const subtotal = unitPrice != null ? unitPrice * conts.length : null
   const autoTotal = subtotal != null ? withVat(subtotal, vatPct) : null
 

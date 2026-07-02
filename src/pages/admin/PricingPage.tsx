@@ -2,22 +2,31 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, ShieldAlert, Download, Upload, Percent } from 'lucide-react'
 import { ScreenHeader } from '../../components/mobile'
 import { useAuth } from '../../lib/AuthContext'
-import { useCatalog } from '../../features/catalog'
+import { useCatalog, CARRIER_GROUPS, CARRIER_GROUP_LABEL } from '../../features/catalog'
 import { useVatPercent, useSaveVatPercent, DEFAULT_VAT } from '../../features/settings'
-import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
+import { DEPOTS, CONT_TYPES } from '../../lib/options'
 import { parseCsv, buildCsv, downloadCsv } from '../../lib/csv'
 import {
   usePricing, useUpsertPricing, useDeletePricing, useImportPricing, withVat,
   type Pricing, type PricingInput,
 } from '../../features/pricing'
 
-const CSV_HEADER = ['loai_cont', 'depot', 'hang_tau', 'don_gia', 'active']
+const CSV_HEADER = ['loai_cont', 'depot', 'hang_tau_nhom', 'don_gia', 'active']
 
 const inputCls = 'w-full h-11 px-3 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white transition'
 
 const emptyForm = (): PricingInput => ({
-  loai_cont: '', depot: null, hang_tau: null, don_gia: 0, active: true,
+  loai_cont: '', depot: null, hang_tau_nhom: null, don_gia: 0, active: true,
 })
+
+// Chuẩn hoá giá trị nhóm hãng tàu từ CSV: 'nội địa'/'noi_dia'/'nd' → 'noi_dia'; …
+function normGroup(s: string): 'noi_dia' | 'quoc_te' | null {
+  const x = s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s_]/g, '')
+  if (!x) return null
+  if (x.startsWith('noidia') || x === 'nd') return 'noi_dia'
+  if (x.startsWith('quocte') || x === 'qt') return 'quoc_te'
+  return null
+}
 
 export function PricingPage() {
   const { profile } = useAuth()
@@ -61,13 +70,13 @@ export function PricingPage() {
   function handleDownload() {
     const body: (string | number)[][] = []
     for (const ct of contTypes) {
-      const cur = (rows ?? []).find(r => r.loai_cont === ct && !r.depot && !r.hang_tau)
+      const cur = (rows ?? []).find(r => r.loai_cont === ct && !r.depot && !r.hang_tau_nhom)
       body.push([ct, '', '', cur ? cur.don_gia : '', 'TRUE'])
     }
     downloadCsv('bang-gia-template.csv', buildCsv(CSV_HEADER, body))
   }
 
-  // Import CSV → upsert theo (loai_cont, depot, hang_tau). Bỏ qua ô giá trống.
+  // Import CSV → upsert theo (loai_cont, depot, hang_tau_nhom). Bỏ qua ô giá trống.
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -80,7 +89,7 @@ export function PricingPage() {
       const col = (aliases: string[]) => head.findIndex(h => aliases.includes(h))
       const iCont = col(['loai_cont', 'loại cont', 'cont'])
       const iDepot = col(['depot'])
-      const iHang = col(['hang_tau', 'hãng tàu', 'hang tau'])
+      const iNhom = col(['hang_tau_nhom', 'nhom', 'nhóm', 'hang_tau', 'hãng tàu'])
       const iGia = col(['don_gia', 'đơn giá', 'gia', 'don gia'])
       const iAct = col(['active', 'bật', 'bat'])
       if (iCont < 0 || iGia < 0) {
@@ -98,7 +107,7 @@ export function PricingPage() {
         inputs.push({
           loai_cont: cont,
           depot: (iDepot >= 0 ? (c[iDepot] ?? '').trim() : '') || null,
-          hang_tau: (iHang >= 0 ? (c[iHang] ?? '').trim() : '') || null,
+          hang_tau_nhom: iNhom >= 0 ? normGroup(c[iNhom] ?? '') : null,
           don_gia: parseInt(giaRaw, 10) || 0,
           active: !['false', '0', 'off', 'tắt', 'tat', 'khong', 'không', 'no'].includes(actRaw),
         })
@@ -165,7 +174,7 @@ export function PricingPage() {
             <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={handleFile} />
           </div>
           <p className="text-[10.5px] text-ink-400 mt-2 leading-snug">
-            Tải template → điền cột <b>don_gia</b> bằng Excel → Import. Cột <b>depot</b>/<b>hang_tau</b> bỏ trống = áp dụng mọi giá trị.
+            Tải template → điền cột <b>don_gia</b> bằng Excel → Import. Cột <b>hang_tau_nhom</b> nhập <b>noi_dia</b>/<b>quoc_te</b> (bỏ trống = mọi hãng); <b>depot</b> bỏ trống = mọi depot.
           </p>
           {msg && (
             <div className={`mt-2 text-[12px] rounded-lg px-3 py-2 ${msg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
@@ -215,7 +224,7 @@ function PriceRow({ row, vatPct, onEdit, onDelete }: {
           {!row.active && <span className="text-[10px] bg-ink-200 text-ink-500 px-1.5 py-0.5 rounded font-semibold">Tắt</span>}
         </div>
         <div className="text-[11px] text-ink-400 mt-0.5 truncate">
-          {row.depot || 'Mọi depot'} · {row.hang_tau || 'Mọi hãng tàu'}
+          {row.depot || 'Mọi depot'} · {row.hang_tau_nhom ? CARRIER_GROUP_LABEL[row.hang_tau_nhom] : 'Mọi hãng tàu'}
         </div>
       </div>
       <div className="text-right whitespace-nowrap flex flex-col items-end gap-1">
@@ -235,10 +244,8 @@ function PriceRow({ row, vatPct, onEdit, onDelete }: {
 function PriceEditor({ value, onClose }: { value: PricingInput; onClose: () => void }) {
   const upsert = useUpsertPricing()
   const { data: depotList } = useCatalog('depot')
-  const { data: carrierList } = useCatalog('carrier')
   const { data: contList } = useCatalog('cont_type')
   const depots = depotList?.length ? depotList : DEPOTS
-  const carriers = carrierList?.length ? carrierList : CARRIERS
   const contTypes = contList?.length ? contList : CONT_TYPES
 
   const [f, setF] = useState<PricingInput>(value)
@@ -294,10 +301,10 @@ function PriceEditor({ value, onClose }: { value: PricingInput; onClose: () => v
             </select>
           </Field>
 
-          <Field label="Hãng tàu (bỏ trống = mọi hãng)">
-            <select value={f.hang_tau ?? ''} onChange={e => set('hang_tau', e.target.value || null)} className={inputCls}>
+          <Field label="Nhóm hãng tàu (bỏ trống = mọi hãng)">
+            <select value={f.hang_tau_nhom ?? ''} onChange={e => set('hang_tau_nhom', e.target.value || null)} className={inputCls}>
               <option value="">Mọi hãng tàu</option>
-              {carriers.map(o => <option key={o} value={o}>{o}</option>)}
+              {CARRIER_GROUPS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
             </select>
           </Field>
 

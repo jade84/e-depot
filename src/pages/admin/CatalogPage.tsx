@@ -4,6 +4,7 @@ import { ScreenHeader } from '../../components/mobile'
 import { useAuth } from '../../lib/AuthContext'
 import {
   useCatalogAdmin, useUpsertCatalog, useDeleteCatalog,
+  CARRIER_GROUPS, CARRIER_GROUP_LABEL,
   type CatalogType, type CatalogItem, type CatalogInput,
 } from '../../features/catalog'
 
@@ -51,7 +52,7 @@ export function CatalogPage() {
         title="Quản lý danh mục"
         right={
           <button
-            onClick={() => setEditing({ type: tab, name: '', sort: nextSort, active: true })}
+            onClick={() => setEditing({ type: tab, name: '', nhom: null, sort: nextSort, active: true })}
             className="flex items-center gap-1 bg-white/15 text-white text-[12px] font-semibold px-2.5 py-1.5 rounded-lg active:bg-white/25"
           >
             <Plus size={15} /> Thêm
@@ -88,7 +89,14 @@ export function CatalogPage() {
                 {it.sort}
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-semibold text-ink-800 truncate">{it.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] font-semibold text-ink-800 truncate">{it.name}</span>
+                  {it.type === 'carrier' && it.nhom && (
+                    <span className="text-[10px] font-bold text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded shrink-0">
+                      {CARRIER_GROUP_LABEL[it.nhom] ?? it.nhom}
+                    </span>
+                  )}
+                </div>
                 {!it.active && <span className="text-[10px] text-ink-400">Đang tắt</span>}
               </div>
               <div className="flex gap-1 shrink-0">
@@ -144,6 +152,23 @@ function CatalogEditor({ value, onClose }: { value: CatalogInput; onClose: () =>
               placeholder={f.type === 'cont_type' ? "VD: 20'DC" : f.type === 'carrier' ? 'VD: MAERSK' : 'VD: GreenLogistics Depot'}
               className={inputCls} autoFocus />
           </Field>
+
+          {f.type === 'carrier' && (
+            <Field label="Nhóm (để bảng giá áp theo nhóm)">
+              <div className="grid grid-cols-2 gap-2">
+                {CARRIER_GROUPS.map(g => (
+                  <button key={g.value} type="button"
+                    onClick={() => set('nhom', f.nhom === g.value ? null : g.value)}
+                    className={`h-11 rounded-xl text-[14px] font-semibold border transition ${
+                      f.nhom === g.value ? 'bg-brand-700 text-white border-brand-700' : 'bg-ink-50 text-ink-600 border-ink-200'
+                    }`}>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10.5px] text-ink-400 mt-1">Bấm lần nữa để bỏ chọn (không thuộc nhóm nào).</p>
+            </Field>
+          )}
 
           <Field label="Thứ tự hiển thị">
             <input value={String(f.sort)} onChange={e => set('sort', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}

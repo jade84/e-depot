@@ -8,6 +8,7 @@ create table if not exists public.catalog (
   id         uuid primary key default gen_random_uuid(),
   type       text not null,               -- 'depot' | 'carrier' | 'cont_type'
   name       text not null,
+  nhom       text,                          -- nhóm (chỉ dùng cho carrier): 'noi_dia' | 'quoc_te'
   sort       int  not null default 0,
   active     boolean not null default true,
   created_at timestamptz not null default now()

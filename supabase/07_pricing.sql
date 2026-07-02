@@ -6,19 +6,19 @@
 
 -- Giá nâng hạ Lấy & Trả như nhau → không tách theo nghiệp vụ. Đơn giá CHƯA VAT.
 create table if not exists public.pricing (
-  id         uuid primary key default gen_random_uuid(),
-  loai_cont  text not null,               -- '20''DC', '40''HC', ...
-  depot      text,                         -- null = áp dụng MỌI depot
-  hang_tau   text,                         -- null = áp dụng MỌI hãng tàu
-  don_gia    numeric not null default 0,   -- phí / 1 cont (VND, CHƯA VAT)
-  active     boolean not null default true,
-  created_at timestamptz not null default now()
+  id            uuid primary key default gen_random_uuid(),
+  loai_cont     text not null,             -- '20''DC', '40''HC', ...
+  depot         text,                       -- null = áp dụng MỌI depot
+  hang_tau_nhom text,                       -- null = mọi hãng | 'noi_dia' | 'quoc_te'
+  don_gia       numeric not null default 0, -- phí / 1 cont (VND, CHƯA VAT)
+  active        boolean not null default true,
+  created_at    timestamptz not null default now()
 );
 
--- Mỗi tổ hợp (loai_cont, depot, hang_tau) chỉ 1 dòng.
--- coalesce để null (mọi depot/hãng tàu) cũng nằm trong ràng buộc unique.
+-- Mỗi tổ hợp (loai_cont, depot, hang_tau_nhom) chỉ 1 dòng.
+-- coalesce để null (mọi depot/nhóm hãng tàu) cũng nằm trong ràng buộc unique.
 create unique index if not exists pricing_key
-  on public.pricing (loai_cont, coalesce(depot,''), coalesce(hang_tau,''));
+  on public.pricing (loai_cont, coalesce(depot,''), coalesce(hang_tau_nhom,''));
 
 alter table public.pricing enable row level security;
 

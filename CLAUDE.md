@@ -39,13 +39,16 @@ Chưa có test framework (không có script `test`).
   - `08_catalog_admin.sql` mở quyền admin cho `catalog` (đọc cả dòng tắt + ghi)
   - `09_settings.sql` bảng `settings` key-value jsonb (đọc chung, ghi admin) — chứa `bank_info`, `vat_percent`
   - `10_pricing_drop_loai.sql` bỏ cột `pricing.loai` (Lấy/Trả cùng giá) — chạy sau 07
+  - `11_catalog_group.sql` thêm cột `catalog.nhom` (nhóm hãng tàu: `noi_dia`/`quoc_te`)
+  - `12_pricing_carrier_group.sql` đổi `pricing.hang_tau` → `pricing.hang_tau_nhom` (áp giá theo nhóm)
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
 
 ## Data model (bảng)
 - `users` (hồ sơ, 1-1 auth.users; `role` = `'driver'` mặc định / `'admin'`) · `vehicles` (xe) · `drivers` (tài xế) · `orders` (Lấy/Trả cont) · `catalog` (danh mục dùng chung) · `pricing` (bảng giá)
-- `pricing`: `(loai_cont, depot?, hang_tau?) → don_gia` (phí/1 cont, **CHƯA VAT**). Lấy & Trả cùng giá (không tách `loai`). `depot`/`hang_tau` = null nghĩa là áp dụng mọi giá trị. `matchPrice()` ưu tiên dòng cụ thể hơn.
+- `pricing`: `(loai_cont, depot?, hang_tau_nhom?) → don_gia` (phí/1 cont, **CHƯA VAT**). Lấy & Trả cùng giá (không tách `loai`). `hang_tau_nhom` = nhóm hãng tàu (`noi_dia`/`quoc_te`, null=mọi hãng); depot null=mọi depot. `matchPrice()` ưu tiên dòng cụ thể hơn — nhận `carrierGroup` (tra từ `catalog.nhom` của hãng tàu trên đơn qua `useCarriers`).
+- `catalog.nhom`: chỉ dùng cho `type='carrier'` để phân nhóm Nội địa/Quốc tế (`CARRIER_GROUPS`, `CARRIER_GROUP_LABEL`).
 - VAT (%) lưu ở `settings.vat_percent` (mặc định 10). Phí đơn = `don_gia × số_lượng × (1 + VAT%)` = `withVat()`. `settings` key thiếu → hook tự fallback + upsert khi admin lưu (không cần migration cho `vat_percent`).
 - **Admin** = `users.role = 'admin'` (set thủ công trong DB). Điểm vào Admin trên HomePage + trang chỉ hiện/cho phép khi `profile.role === 'admin'` (RLS chặn ghi ở tầng DB).
 - `vehicles.driver_id` → gán tài xế. `orders.loai` = `'lay'` | `'tra'`, `trang_thai` mặc định `cho_duyet` (giá trị dùng: `cho_duyet`, `huy`, …). `orders.phi_nang_ha` = phí (số tiền) → dùng cho trang Thanh toán.
@@ -72,7 +75,7 @@ Chưa có test framework (không có script `test`).
 - **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đọc từ `settings.bank_info` (`useBankInfo`, fallback `DEFAULT_BANK`).
 - **Admin — Ngân hàng** (`/admin/ngan-hang`, chỉ admin): sửa `bank_info` (mã VietQR, số TK, tên chủ TK, tên NH) + xem trước QR. `useSaveBankInfo`.
 - **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing` (1 giá/loại cont) + chỉnh **% VAT** + **import/export CSV** (`src/lib/csv.ts`, `useImportPricing` upsert theo `loai_cont+depot+hang_tau`). Form Lấy/Trả cont **tự tính `phi_nang_ha`** khi có giá khớp (`matchPrice` → `withVat`), hiện bảng **trước VAT / VAT / sau VAT** (`FeeBreakdown` trong `components/mobile.tsx`); chưa có giá thì tài xế nhập tay.
-- **Admin — Danh mục** (`/admin/danh-muc`, chỉ admin): CRUD `catalog` theo tab depot/hãng tàu/loại cont (`useCatalogAdmin` đọc cả dòng tắt, `useUpsertCatalog`/`useDeleteCatalog`). Form nghiệp vụ tự cập nhật theo (`useCatalog`).
+- **Admin — Danh mục** (`/admin/danh-muc`, chỉ admin): CRUD `catalog` theo tab depot/hãng tàu/loại cont (`useCatalogAdmin` đọc cả dòng tắt, `useUpsertCatalog`/`useDeleteCatalog`). Tab hãng tàu chọn **nhóm Nội địa/Quốc tế** (`catalog.nhom`) để bảng giá áp theo nhóm. Form nghiệp vụ tự cập nhật theo (`useCatalog`).
 
 ## Quy ước quan trọng (ĐỪNG phá vỡ)
 - **Ảnh: upload-NGAY khi chọn** (component `PhotoUploadSlot`) → state giữ URL (chuỗi), KHÔNG giữ File.
@@ -88,7 +91,7 @@ Chưa có test framework (không có script `test`).
 - Vercel: import repo + 2 env `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (đúng 1 dòng, không newline thừa).
 
 ## Việc còn lại / định hướng
-- Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy các SQL mới trên Dashboard**: `07_pricing.sql`, `08_catalog_admin.sql`, `09_settings.sql`, `10_pricing_drop_loai.sql`.
+- Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy các SQL mới trên Dashboard**: `07`→`12` (`07_pricing`, `08_catalog_admin`, `09_settings`, `10_pricing_drop_loai`, `11_catalog_group`, `12_pricing_carrier_group`).
 - **Trang Admin (còn lại)**: có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 
