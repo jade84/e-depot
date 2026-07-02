@@ -3,6 +3,40 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ImagePlus, X, Loader2, AlertTriangle, Camera, Image as ImageIcon } from 'lucide-react'
 import { uploadImage } from '../lib/storage'
 
+// Modal nhập lý do từ chối (dùng chung cho duyệt xe/tài xế/đơn).
+export function RejectReasonModal({ title, hint, busy, onCancel, onConfirm }: {
+  title: string
+  hint?: string
+  busy: boolean
+  onCancel: () => void
+  onConfirm: (reason: string) => void
+}) {
+  const [reason, setReason] = useState('')
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40" onClick={onCancel}>
+      <div className="w-full max-w-[480px] bg-white rounded-t-3xl p-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-[15px] font-bold text-ink-800">{title}</h2>
+          <button onClick={onCancel} className="p-1 text-ink-400"><X size={22} /></button>
+        </div>
+        <p className="text-[12px] text-ink-500 mb-2">{hint ?? 'Lý do sẽ gửi vào mục Thông báo của nhà xe.'}</p>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} autoFocus
+          placeholder="Nhập lý do…"
+          className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white leading-relaxed" />
+        <div className="flex gap-2 mt-3">
+          <button onClick={onCancel} disabled={busy}
+            className="flex-1 h-11 rounded-xl bg-ink-100 text-ink-700 font-semibold text-[14px] active:bg-ink-200">Huỷ</button>
+          <button onClick={() => onConfirm(reason)} disabled={busy}
+            className="flex-1 h-11 rounded-xl bg-red-600 text-white font-semibold text-[14px] active:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-1.5">
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />} Từ chối & gửi
+          </button>
+        </div>
+        <div className="pb-3" />
+      </div>
+    </div>
+  )
+}
+
 // Thanh tiêu đề màn hình con (có nút back)
 export function ScreenHeader({ title, right }: { title: string; right?: React.ReactNode }) {
   const nav = useNavigate()

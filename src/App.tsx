@@ -26,6 +26,8 @@ import { BankSettingsPage } from './pages/admin/BankSettingsPage'
 import { ServicesPage } from './pages/admin/ServicesPage'
 import { ContactSettingsPage } from './pages/admin/ContactSettingsPage'
 import { VehicleApprovalPage } from './pages/admin/VehicleApprovalPage'
+import { DriverApprovalPage } from './pages/admin/DriverApprovalPage'
+import { OrderApprovalPage } from './pages/admin/OrderApprovalPage'
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -87,6 +89,8 @@ export default function App() {
               <Route path="/admin/dich-vu" element={<ServicesPage />} />
               <Route path="/admin/lien-he" element={<ContactSettingsPage />} />
               <Route path="/admin/duyet-xe" element={<VehicleApprovalPage />} />
+              <Route path="/admin/duyet-tai-xe" element={<DriverApprovalPage />} />
+              <Route path="/admin/duyet-don" element={<OrderApprovalPage />} />
               <Route path="/thong-tin/dich-vu/:id" element={<ServiceDetailPage />} />
             </Route>
           </Routes>

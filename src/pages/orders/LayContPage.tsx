@@ -170,7 +170,7 @@ export function LayContPage() {
               <Field label="Tài xế (xe chưa gán — chọn tại đây)" req>
                 <select value={manualDriverId} onChange={e => setManualDriverId(e.target.value)} className={inputCls}>
                   <option value="">— Chọn tài xế —</option>
-                  {drivers?.map(d => <option key={d.id} value={d.id}>{d.name} · {d.cccd}</option>)}
+                  {drivers?.filter(d => d.status === 'hoat_dong').map(d => <option key={d.id} value={d.id}>{d.name} · {d.cccd}</option>)}
                 </select>
               </Field>
             )

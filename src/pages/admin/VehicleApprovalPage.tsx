@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Truck, Check, X, Loader2, ShieldAlert, Clock } from 'lucide-react'
-import { ScreenHeader } from '../../components/mobile'
+import { ScreenHeader, RejectReasonModal } from '../../components/mobile'
 import { useAuth } from '../../lib/AuthContext'
 import { useAllVehicles, useReviewVehicle, type Vehicle } from '../../features/vehicles'
 
@@ -72,8 +72,8 @@ export function VehicleApprovalPage() {
       </div>
 
       {rejecting && (
-        <RejectModal
-          vehicle={rejecting}
+        <RejectReasonModal
+          title={`Từ chối xe ${rejecting.plate}`}
           busy={review.isPending}
           onCancel={() => setRejecting(null)}
           onConfirm={async reason => {
@@ -82,35 +82,6 @@ export function VehicleApprovalPage() {
           }}
         />
       )}
-    </div>
-  )
-}
-
-function RejectModal({ vehicle, busy, onCancel, onConfirm }: {
-  vehicle: Vehicle; busy: boolean; onCancel: () => void; onConfirm: (reason: string) => void
-}) {
-  const [reason, setReason] = useState('')
-  return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/40" onClick={onCancel}>
-      <div className="w-full max-w-[480px] bg-white rounded-t-3xl p-4" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-[15px] font-bold text-ink-800">Từ chối xe {vehicle.plate}</h2>
-          <button onClick={onCancel} className="p-1 text-ink-400"><X size={22} /></button>
-        </div>
-        <p className="text-[12px] text-ink-500 mb-2">Lý do sẽ gửi vào mục Thông báo của nhà xe.</p>
-        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} autoFocus
-          placeholder="VD: Ảnh cà vẹt mờ, không đọc được biển số…"
-          className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white leading-relaxed" />
-        <div className="flex gap-2 mt-3">
-          <button onClick={onCancel} disabled={busy}
-            className="flex-1 h-11 rounded-xl bg-ink-100 text-ink-700 font-semibold text-[14px] active:bg-ink-200">Huỷ</button>
-          <button onClick={() => onConfirm(reason)} disabled={busy}
-            className="flex-1 h-11 rounded-xl bg-red-600 text-white font-semibold text-[14px] active:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-1.5">
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />} Từ chối & gửi
-          </button>
-        </div>
-        <div className="pb-3" />
-      </div>
     </div>
   )
 }

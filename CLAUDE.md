@@ -44,6 +44,7 @@ Chưa có test framework (không có script `test`).
   - `13_services.sql` bảng `services` (dịch vụ cty ở trang Thông tin) — RLS đọc chung/ghi admin
   - `14_vehicles_approve.sql` policy cho admin đọc/ghi mọi `vehicles` (duyệt xe)
   - `15_notifications.sql` bảng `notifications` (thông báo cho nhà xe) — đọc/sửa/xoá của mình, admin insert
+  - `16_drivers_approve.sql` · `17_orders_approve.sql` policy cho admin đọc/ghi mọi `drivers`/`orders` (duyệt)
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
@@ -73,7 +74,8 @@ Chưa có test framework (không có script `test`).
 - **Quản lý phương tiện**: thêm/xoá xe (ảnh xe + cà vẹt), gán tài xế, danh sách. Xe tạo ra = **`cho_duyet`** → admin duyệt (`kich_hoat`/`tu_choi`); form tạo đơn chỉ chọn xe `kich_hoat`.
 - **Admin — Duyệt xe** (`/admin/duyet-xe`, chỉ admin): xem xe chờ duyệt + ảnh xe/cà vẹt, **Duyệt / Từ chối (kèm lý do)**. `useReviewVehicle` cập nhật status **và gửi `notifications`** cho nhà xe (duyệt: "đã kích hoạt"; từ chối: kèm lý do). RLS: `14_vehicles_approve.sql`.
 - **Thông báo** (`/thong-bao`, `NotificationsPage`): nhà xe xem thông báo của mình (`useNotifications`), đọc tất cả (`useMarkAllRead`), xoá. Thông báo tạo khi admin duyệt/từ chối xe.
-- **Quản lý nhân sự**: thêm/xoá tài xế (ảnh khuôn mặt + CCCD trước/sau). **Quét QR CCCD/Căn cước** (mặt sau với thẻ mới) tự điền + **đối chiếu** khi lưu.
+- **Quản lý nhân sự**: thêm/xoá tài xế (ảnh khuôn mặt + CCCD trước/sau). Tài xế mới = **`cho_duyet`** → admin duyệt (`hoat_dong`/`tu_choi`); form đơn chỉ chọn tài xế `hoat_dong`. **Quét QR CCCD/Căn cước** (mặt sau với thẻ mới) tự điền + **đối chiếu** khi lưu.
+- **Admin — Duyệt tài xế** (`/admin/duyet-tai-xe`) & **Duyệt đơn** (`/admin/duyet-don`): giống duyệt xe, `useReviewDriver`/`useReviewOrder` cập nhật trạng thái + gửi `notifications`. Đơn duyệt → `chua_tt` (chờ thanh toán), từ chối → `tu_choi` (kèm lý do). Modal lý do dùng chung `RejectReasonModal`.
 - **Lấy cont rỗng** (`/lay-cont`) và **Trả cont rỗng** (`/tra-cont`, nhập nhiều số cont ISO 6346) → tạo `orders`.
 - **Đơn hàng** (`/don-hang`): danh sách + hủy đơn.
 - **Chi tiết đơn** (`/don-hang/:id`): xem full thông tin đơn + ảnh.
@@ -98,7 +100,7 @@ Chưa có test framework (không có script `test`).
 
 ## Việc còn lại / định hướng
 - Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy các SQL mới trên Dashboard**: `07`→`12` (`07_pricing`, `08_catalog_admin`, `09_settings`, `10_pricing_drop_loai`, `11_catalog_group`, `12_pricing_carrier_group`).
-- **Trang Admin (còn lại)**: luồng **duyệt** tài xế/đơn (đã có duyệt xe; tài xế/đơn vẫn đang bỏ duyệt).
+- Đã có duyệt xe/tài xế/đơn. (Sau) có thể gắn thông báo cho **thanh toán thành công**, nhắc đơn `chua_tt`, …
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 
 ## Bối cảnh

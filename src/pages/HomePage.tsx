@@ -33,7 +33,9 @@ const ADMIN: Item[] = [
   { label: 'Ngân hàng', icon: Landmark,   color: '#0369a1', bg: '#e0f2fe', to: '/admin/ngan-hang' },
   { label: 'Dịch vụ',   icon: LayoutGrid, color: '#c026d3', bg: '#fae8ff', to: '/admin/dich-vu' },
   { label: 'Liên hệ',   icon: Contact,    color: '#0891b2', bg: '#cffafe', to: '/admin/lien-he' },
-  { label: 'Duyệt xe',  icon: Truck,      color: '#dc2626', bg: '#fee2e2', to: '/admin/duyet-xe' },
+  { label: 'Duyệt xe',      icon: Truck,         color: '#dc2626', bg: '#fee2e2', to: '/admin/duyet-xe' },
+  { label: 'Duyệt tài xế',  icon: Users,         color: '#2563eb', bg: '#dbeafe', to: '/admin/duyet-tai-xe' },
+  { label: 'Duyệt đơn',     icon: ClipboardCheck, color: '#ca8a04', bg: '#fef9c3', to: '/admin/duyet-don' },
 ]
 
 function Grid({ title, items }: { title: string; items: Item[] }) {

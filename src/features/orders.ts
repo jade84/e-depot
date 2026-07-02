@@ -92,3 +92,45 @@ export function useCancelOrder() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orders'] }),
   })
 }
+
+// ── Admin: duyệt đơn (đọc tất cả đơn của mọi nhà xe) ────────────────────────
+export function useAllOrders() {
+  return useQuery({
+    queryKey: ['orders-admin'],
+    queryFn: async (): Promise<Order[]> => {
+      const { data, error } = await supabase
+        .from('orders').select('*').order('created_at', { ascending: false })
+      if (error) throw error
+      return data as Order[]
+    },
+  })
+}
+
+// Duyệt (→ chua_tt: chờ thanh toán) hoặc từ chối (→ tu_choi) + gửi thông báo.
+export function useReviewOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ order, approve, reason }: { order: Order; approve: boolean; reason?: string }) => {
+      const trang_thai = approve ? 'chua_tt' : 'tu_choi'
+      const { error } = await supabase.from('orders').update({ trang_thai }).eq('id', order.id)
+      if (error) throw error
+
+      const ma = order.so_bl || order.id.slice(0, 8).toUpperCase()
+      const title = approve ? 'Đơn đã được duyệt' : 'Đơn bị từ chối'
+      const body = approve
+        ? `Đơn ${ma} đã được duyệt, vui lòng thanh toán phí nâng hạ.`
+        : `Đơn ${ma} bị từ chối.${reason?.trim() ? ' Lý do: ' + reason.trim() : ''}`
+      const { error: e2 } = await supabase.from('notifications').insert({
+        owner_id: order.owner_id,
+        title, body,
+        type: approve ? 'order_approve' : 'order_reject',
+        ref_id: order.id,
+      })
+      if (e2) throw e2
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['orders'] })
+      qc.invalidateQueries({ queryKey: ['orders-admin'] })
+    },
+  })
+}
