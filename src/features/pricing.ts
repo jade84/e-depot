@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
+// Giá nâng hạ Lấy & Trả như nhau → không tách theo nghiệp vụ, chỉ theo loại cont
+// (tuỳ chọn thêm depot / hãng tàu). Đơn giá nhập là CHƯA VAT.
 export type Pricing = {
   id: string
-  loai: 'lay' | 'tra'
   loai_cont: string
   depot: string | null
   hang_tau: string | null
@@ -14,7 +15,6 @@ export type Pricing = {
 
 export type PricingInput = {
   id?: string
-  loai: 'lay' | 'tra'
   loai_cont: string
   depot: string | null
   hang_tau: string | null
@@ -29,7 +29,6 @@ export function usePricing() {
     queryFn: async (): Promise<Pricing[]> => {
       const { data, error } = await supabase
         .from('pricing').select('*')
-        .order('loai', { ascending: true })
         .order('loai_cont', { ascending: true })
       if (error) throw error
       return data as Pricing[]
@@ -42,7 +41,6 @@ export function useUpsertPricing() {
   return useMutation({
     mutationFn: async (p: PricingInput) => {
       const row = {
-        loai: p.loai,
         loai_cont: p.loai_cont,
         depot: p.depot || null,
         hang_tau: p.hang_tau || null,
@@ -69,17 +67,17 @@ export function useDeletePricing() {
   })
 }
 
-// Import hàng loạt từ CSV: khớp theo (loai, loai_cont, depot, hang_tau) →
+// Import hàng loạt từ CSV: khớp theo (loai_cont, depot, hang_tau) →
 // có thì update, chưa có thì insert. Trả số dòng thêm/cập nhật.
 export function useImportPricing() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (rows: PricingInput[]): Promise<{ inserted: number; updated: number }> => {
       const { data: existing, error: e1 } = await supabase
-        .from('pricing').select('id, loai, loai_cont, depot, hang_tau')
+        .from('pricing').select('id, loai_cont, depot, hang_tau')
       if (e1) throw e1
-      const key = (r: { loai: string; loai_cont: string; depot: string | null; hang_tau: string | null }) =>
-        `${r.loai}|${r.loai_cont}|${r.depot ?? ''}|${r.hang_tau ?? ''}`
+      const key = (r: { loai_cont: string; depot: string | null; hang_tau: string | null }) =>
+        `${r.loai_cont}|${r.depot ?? ''}|${r.hang_tau ?? ''}`
       const idByKey = new Map(
         (existing ?? []).map(e => [key(e as Pricing), (e as Pricing).id]),
       )
@@ -88,7 +86,6 @@ export function useImportPricing() {
       let updated = 0
       for (const r of rows) {
         const row = {
-          loai: r.loai,
           loai_cont: r.loai_cont,
           depot: r.depot || null,
           hang_tau: r.hang_tau || null,
@@ -114,16 +111,20 @@ export function useImportPricing() {
   })
 }
 
+// Cộng VAT vào tạm tính (làm tròn về đồng).
+export function withVat(subtotal: number, vatPercent: number): number {
+  return Math.round(subtotal * (1 + vatPercent / 100))
+}
+
 // Tìm đơn giá /1 cont khớp nhất. Dòng có depot/hãng tàu cụ thể được ưu tiên
 // hơn dòng "mọi depot/mọi hãng tàu" (null). Trả null nếu chưa có giá.
 export function matchPrice(
   rows: Pricing[] | undefined,
-  q: { loai: 'lay' | 'tra'; loai_cont: string; depot?: string; hang_tau?: string },
+  q: { loai_cont: string; depot?: string; hang_tau?: string },
 ): number | null {
   if (!rows || !q.loai_cont) return null
   const cands = rows.filter(r =>
     r.active &&
-    r.loai === q.loai &&
     r.loai_cont === q.loai_cont &&
     (r.depot == null || r.depot === q.depot) &&
     (r.hang_tau == null || r.hang_tau === q.hang_tau),

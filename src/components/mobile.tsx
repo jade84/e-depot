@@ -15,6 +15,29 @@ export function ScreenHeader({ title, right }: { title: string; right?: React.Re
   )
 }
 
+// Bảng phí: giá trước VAT → tiền VAT → thành tiền sau VAT.
+export function FeeBreakdown({ subtotal, vatPct, total, unitPrice, qty }: {
+  subtotal: number; vatPct: number; total: number; unitPrice: number; qty: number
+}) {
+  const row = 'flex items-center justify-between px-3.5 py-2'
+  return (
+    <div className="rounded-xl border border-brand-200 bg-brand-50 divide-y divide-brand-100">
+      <div className={row}>
+        <span className="text-[12px] text-ink-500">Giá trước VAT ({unitPrice.toLocaleString('vi-VN')}đ × {qty})</span>
+        <span className="text-[13px] font-semibold text-ink-700">{subtotal.toLocaleString('vi-VN')} đ</span>
+      </div>
+      <div className={row}>
+        <span className="text-[12px] text-ink-500">VAT {vatPct}%</span>
+        <span className="text-[13px] font-semibold text-ink-700">{(total - subtotal).toLocaleString('vi-VN')} đ</span>
+      </div>
+      <div className={row}>
+        <span className="text-[12.5px] font-bold text-brand-800">Thành tiền (đã VAT)</span>
+        <span className="text-[16px] font-extrabold text-brand-800">{total.toLocaleString('vi-VN')} đ</span>
+      </div>
+    </div>
+  )
+}
+
 // Ô chụp/chọn 1 ảnh — bấm mở camera (điện thoại) hoặc thư viện.
 export function PhotoSlot({ file, onPick, onClear, label }: {
   file: File | null

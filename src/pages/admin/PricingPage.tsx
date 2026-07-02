@@ -1,31 +1,22 @@
-import { useRef, useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, ShieldAlert, Download, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, ShieldAlert, Download, Upload, Percent } from 'lucide-react'
 import { ScreenHeader } from '../../components/mobile'
 import { useAuth } from '../../lib/AuthContext'
 import { useCatalog } from '../../features/catalog'
+import { useVatPercent, useSaveVatPercent, DEFAULT_VAT } from '../../features/settings'
 import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
 import { parseCsv, buildCsv, downloadCsv } from '../../lib/csv'
 import {
-  usePricing, useUpsertPricing, useDeletePricing, useImportPricing,
+  usePricing, useUpsertPricing, useDeletePricing, useImportPricing, withVat,
   type Pricing, type PricingInput,
 } from '../../features/pricing'
 
-const CSV_HEADER = ['loai', 'loai_cont', 'depot', 'hang_tau', 'don_gia', 'active']
-
-// 'Lấy'/'lay'/'L' → 'lay'; 'Trả'/'tra'/'T' → 'tra'
-function normLoai(s: string): 'lay' | 'tra' | null {
-  const x = s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  if (x.startsWith('lay') || x === 'l') return 'lay'
-  if (x.startsWith('tra') || x === 't') return 'tra'
-  return null
-}
+const CSV_HEADER = ['loai_cont', 'depot', 'hang_tau', 'don_gia', 'active']
 
 const inputCls = 'w-full h-11 px-3 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white transition'
 
-const LOAI_LABEL: Record<'lay' | 'tra', string> = { lay: 'Lấy cont', tra: 'Trả cont' }
-
-const emptyForm = (loai: 'lay' | 'tra'): PricingInput => ({
-  loai, loai_cont: '', depot: null, hang_tau: null, don_gia: 0, active: true,
+const emptyForm = (): PricingInput => ({
+  loai_cont: '', depot: null, hang_tau: null, don_gia: 0, active: true,
 })
 
 export function PricingPage() {
@@ -38,6 +29,11 @@ export function PricingPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState<PricingInput | null>(null)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  const { data: vat } = useVatPercent()
+  const saveVat = useSaveVatPercent()
+  const [vatInput, setVatInput] = useState('')
+  useEffect(() => { if (vat != null) setVatInput(String(vat)) }, [vat])
 
   const isAdmin = profile?.role === 'admin'
 
@@ -56,27 +52,22 @@ export function PricingPage() {
     )
   }
 
-  const grouped: Record<'lay' | 'tra', Pricing[]> = { lay: [], tra: [] }
-  for (const r of rows ?? []) grouped[r.loai]?.push(r)
-
   async function onDelete(r: Pricing) {
-    if (!confirm(`Xoá đơn giá ${LOAI_LABEL[r.loai]} · ${r.loai_cont}?`)) return
+    if (!confirm(`Xoá đơn giá ${r.loai_cont}?`)) return
     await del.mutateAsync(r.id)
   }
 
-  // Tải template CSV: mỗi loại cont × (Lấy/Trả), điền sẵn giá hiện có (nếu có).
+  // Tải template CSV: mỗi loại cont 1 dòng, điền sẵn giá hiện có (nếu có).
   function handleDownload() {
     const body: (string | number)[][] = []
-    for (const loai of ['lay', 'tra'] as const) {
-      for (const ct of contTypes) {
-        const cur = (rows ?? []).find(r => r.loai === loai && r.loai_cont === ct && !r.depot && !r.hang_tau)
-        body.push([loai, ct, '', '', cur ? cur.don_gia : '', 'TRUE'])
-      }
+    for (const ct of contTypes) {
+      const cur = (rows ?? []).find(r => r.loai_cont === ct && !r.depot && !r.hang_tau)
+      body.push([ct, '', '', cur ? cur.don_gia : '', 'TRUE'])
     }
     downloadCsv('bang-gia-template.csv', buildCsv(CSV_HEADER, body))
   }
 
-  // Import CSV → upsert theo (loai, loai_cont, depot, hang_tau). Bỏ qua ô giá trống.
+  // Import CSV → upsert theo (loai_cont, depot, hang_tau). Bỏ qua ô giá trống.
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -87,14 +78,13 @@ export function PricingPage() {
       if (grid.length < 2) { setMsg({ type: 'err', text: 'File rỗng hoặc chỉ có dòng tiêu đề.' }); return }
       const head = grid[0].map(h => h.trim().toLowerCase())
       const col = (aliases: string[]) => head.findIndex(h => aliases.includes(h))
-      const iLoai = col(['loai', 'loại', 'nghiep_vu'])
       const iCont = col(['loai_cont', 'loại cont', 'cont'])
       const iDepot = col(['depot'])
       const iHang = col(['hang_tau', 'hãng tàu', 'hang tau'])
       const iGia = col(['don_gia', 'đơn giá', 'gia', 'don gia'])
       const iAct = col(['active', 'bật', 'bat'])
-      if (iLoai < 0 || iCont < 0 || iGia < 0) {
-        setMsg({ type: 'err', text: 'Thiếu cột bắt buộc: loai, loai_cont, don_gia.' }); return
+      if (iCont < 0 || iGia < 0) {
+        setMsg({ type: 'err', text: 'Thiếu cột bắt buộc: loai_cont, don_gia.' }); return
       }
       const inputs: PricingInput[] = []
       let bad = 0
@@ -102,12 +92,10 @@ export function PricingPage() {
         const c = grid[r]
         const giaRaw = (c[iGia] ?? '').replace(/[^\d]/g, '')
         if (giaRaw === '') continue // ô giá trống → bỏ qua dòng
-        const loai = normLoai(c[iLoai] ?? '')
         const cont = (c[iCont] ?? '').trim()
-        if (!loai || !cont) { bad++; continue }
+        if (!cont) { bad++; continue }
         const actRaw = (iAct >= 0 ? (c[iAct] ?? '') : '').trim().toLowerCase()
         inputs.push({
-          loai,
           loai_cont: cont,
           depot: (iDepot >= 0 ? (c[iDepot] ?? '').trim() : '') || null,
           hang_tau: (iHang >= 0 ? (c[iHang] ?? '').trim() : '') || null,
@@ -132,7 +120,7 @@ export function PricingPage() {
         title="Bảng giá phí nâng/hạ"
         right={
           <button
-            onClick={() => setEditing(emptyForm('lay'))}
+            onClick={() => setEditing(emptyForm())}
             className="flex items-center gap-1 bg-white/15 text-white text-[12px] font-semibold px-2.5 py-1.5 rounded-lg active:bg-white/25"
           >
             <Plus size={15} /> Thêm
@@ -141,6 +129,28 @@ export function PricingPage() {
       />
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-4 space-y-4">
+        {/* Thuế VAT */}
+        <div className="bg-white rounded-2xl p-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Percent size={16} className="text-brand-700 shrink-0" />
+            <span className="text-[13px] font-semibold text-ink-700 flex-1">Thuế VAT</span>
+            <input value={vatInput}
+              onChange={e => setVatInput(e.target.value.replace(/[^\d.]/g, ''))}
+              inputMode="decimal" placeholder={String(DEFAULT_VAT)}
+              className="w-16 h-9 px-2 text-center rounded-lg border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500" />
+            <span className="text-[13px] text-ink-500">%</span>
+            <button
+              onClick={() => saveVat.mutate(parseFloat(vatInput) || 0)}
+              disabled={saveVat.isPending}
+              className="h-9 px-3 rounded-lg bg-brand-700 text-white text-[12.5px] font-semibold active:bg-brand-800 disabled:opacity-60">
+              {saveVat.isPending ? '…' : 'Lưu'}
+            </button>
+          </div>
+          <p className="text-[10.5px] text-ink-400 mt-2 leading-snug">
+            Đơn giá bên dưới nhập <b>chưa gồm VAT</b>. Phí trên đơn = đơn giá × số lượng × (1 + VAT%).
+          </p>
+        </div>
+
         {/* Toolbar: template + import CSV */}
         <div className="bg-white rounded-2xl p-3 shadow-sm">
           <div className="flex gap-2">
@@ -173,22 +183,13 @@ export function PricingPage() {
             Chưa có đơn giá. Bấm <b>Thêm</b> để tạo.
           </div>
         ) : (
-          (['lay', 'tra'] as const).map(loai => (
-            <section key={loai}>
-              <div className="text-[12px] font-bold text-brand-800 mb-2 px-1">{LOAI_LABEL[loai]}</div>
-              {grouped[loai].length === 0 ? (
-                <div className="text-[12px] text-ink-400 px-1">— chưa có —</div>
-              ) : (
-                <div className="space-y-2">
-                  {grouped[loai].map(r => (
-                    <PriceRow key={r.id} row={r}
-                      onEdit={() => setEditing({ ...r })}
-                      onDelete={() => onDelete(r)} />
-                  ))}
-                </div>
-              )}
-            </section>
-          ))
+          <div className="space-y-2">
+            {rows!.map(r => (
+              <PriceRow key={r.id} row={r} vatPct={parseFloat(vatInput) || DEFAULT_VAT}
+                onEdit={() => setEditing({ ...r })}
+                onDelete={() => onDelete(r)} />
+            ))}
+          </div>
         )}
         <div className="pb-6" />
       </div>
@@ -203,7 +204,9 @@ export function PricingPage() {
   )
 }
 
-function PriceRow({ row, onEdit, onDelete }: { row: Pricing; onEdit: () => void; onDelete: () => void }) {
+function PriceRow({ row, vatPct, onEdit, onDelete }: {
+  row: Pricing; vatPct: number; onEdit: () => void; onDelete: () => void
+}) {
   return (
     <div className={`bg-white rounded-2xl px-4 py-3 shadow-sm flex items-center gap-3 ${row.active ? '' : 'opacity-60'}`}>
       <div className="flex-1 min-w-0">
@@ -215,8 +218,11 @@ function PriceRow({ row, onEdit, onDelete }: { row: Pricing; onEdit: () => void;
           {row.depot || 'Mọi depot'} · {row.hang_tau || 'Mọi hãng tàu'}
         </div>
       </div>
-      <div className="text-[15px] font-extrabold text-brand-700 whitespace-nowrap">
-        {row.don_gia.toLocaleString('vi-VN')} đ
+      <div className="text-right whitespace-nowrap flex flex-col items-end gap-1">
+        <div className="text-[15px] font-extrabold text-brand-700">{row.don_gia.toLocaleString('vi-VN')} đ</div>
+        <span className="inline-block text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+          đã VAT: {withVat(row.don_gia, vatPct).toLocaleString('vi-VN')} đ
+        </span>
       </div>
       <div className="flex gap-1 shrink-0">
         <button onClick={onEdit} className="p-2 rounded-lg text-ink-500 active:bg-ink-100"><Pencil size={16} /></button>
@@ -249,7 +255,7 @@ function PriceEditor({ value, onClose }: { value: PricingInput; onClose: () => v
     } catch (e) {
       const msg = (e as Error).message
       setErr(msg.includes('duplicate') || msg.includes('unique')
-        ? 'Đã có đơn giá cho tổ hợp này (loại/cont/depot/hãng tàu). Sửa dòng cũ thay vì tạo mới.'
+        ? 'Đã có đơn giá cho tổ hợp này (loại cont/depot/hãng tàu). Sửa dòng cũ thay vì tạo mới.'
         : 'Lỗi lưu: ' + msg)
     }
   }
@@ -264,19 +270,6 @@ function PriceEditor({ value, onClose }: { value: PricingInput; onClose: () => v
         </div>
 
         <div className="flex flex-col gap-3">
-          <Field label="Loại nghiệp vụ" req>
-            <div className="grid grid-cols-2 gap-2">
-              {(['lay', 'tra'] as const).map(l => (
-                <button key={l} type="button" onClick={() => set('loai', l)}
-                  className={`h-11 rounded-xl text-[14px] font-semibold border transition ${
-                    f.loai === l ? 'bg-brand-700 text-white border-brand-700' : 'bg-ink-50 text-ink-600 border-ink-200'
-                  }`}>
-                  {LOAI_LABEL[l]}
-                </button>
-              ))}
-            </div>
-          </Field>
-
           <Field label="Loại cont" req>
             <select value={f.loai_cont} onChange={e => set('loai_cont', e.target.value)} className={inputCls}>
               <option value="">— Chọn loại cont —</option>
@@ -284,7 +277,7 @@ function PriceEditor({ value, onClose }: { value: PricingInput; onClose: () => v
             </select>
           </Field>
 
-          <Field label="Đơn giá / 1 cont (VND)" req>
+          <Field label="Đơn giá / 1 cont (VND, chưa VAT)" req>
             <input
               value={f.don_gia ? String(f.don_gia) : ''}
               onChange={e => set('don_gia', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}

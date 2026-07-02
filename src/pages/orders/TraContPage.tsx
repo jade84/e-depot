@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
-import { ScreenHeader, PhotoUploadSlot } from '../../components/mobile'
+import { ScreenHeader, PhotoUploadSlot, FeeBreakdown } from '../../components/mobile'
 import { useVehicles } from '../../features/vehicles'
 import { useDrivers } from '../../features/drivers'
 import { useCreateOrder } from '../../features/orders'
 import { useCatalog } from '../../features/catalog'
-import { usePricing, matchPrice } from '../../features/pricing'
+import { usePricing, matchPrice, withVat } from '../../features/pricing'
+import { useVatPercent, DEFAULT_VAT } from '../../features/settings'
 import { supabase } from '../../lib/supabase'
 import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
 import { normalizeCont, isValidContNo } from '../../lib/validate'
@@ -25,6 +26,7 @@ export function TraContPage() {
   const { data: carrierList } = useCatalog('carrier')
   const { data: contList } = useCatalog('cont_type')
   const { data: prices } = usePricing()
+  const { data: vat } = useVatPercent()
   const depots = depotList?.length ? depotList : DEPOTS
   const carriers = carrierList?.length ? carrierList : CARRIERS
   const contTypes = contList?.length ? contList : CONT_TYPES
@@ -57,9 +59,11 @@ export function TraContPage() {
   const assignedDriver = useMemo(() => drivers?.find(d => d.id === vehicle?.driver_id) || null, [drivers, vehicle])
   const driver = assignedDriver || drivers?.find(d => d.id === manualDriverId) || null
 
-  // Đơn giá theo bảng giá (admin) → tự tính phí nâng hạ theo số lượng cont.
-  const unitPrice = matchPrice(prices, { loai: 'tra', loai_cont: loaiCont, depot, hang_tau: hangTau })
-  const autoTotal = unitPrice != null ? unitPrice * conts.length : null
+  // Đơn giá bảng giá (admin) là CHƯA VAT → phí = tạm tính × (1 + VAT).
+  const vatPct = vat ?? DEFAULT_VAT
+  const unitPrice = matchPrice(prices, { loai_cont: loaiCont, depot, hang_tau: hangTau })
+  const subtotal = unitPrice != null ? unitPrice * conts.length : null
+  const autoTotal = subtotal != null ? withVat(subtotal, vatPct) : null
 
   function addCont() {
     // Cho phép dán nhiều số cùng lúc (cách nhau bởi dấu cách/phẩy/xuống dòng)
@@ -188,10 +192,8 @@ export function TraContPage() {
           </Field>
           {autoTotal != null ? (
             <Field label="Phí nâng hạ (tự tính theo bảng giá)">
-              <div className="h-12 px-4 rounded-xl border border-brand-200 bg-brand-50 flex items-center justify-between">
-                <span className="text-[15px] font-bold text-brand-800">{autoTotal.toLocaleString('vi-VN')} đ</span>
-                <span className="text-[11px] text-ink-400">{unitPrice!.toLocaleString('vi-VN')}đ × {conts.length}</span>
-              </div>
+              <FeeBreakdown subtotal={subtotal!} vatPct={vatPct} total={autoTotal}
+                unitPrice={unitPrice!} qty={conts.length} />
             </Field>
           ) : (
             <Field label="Phí nâng hạ (nếu biết)">

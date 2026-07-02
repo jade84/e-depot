@@ -43,3 +43,35 @@ export function useSaveBankInfo() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', 'bank_info'] }),
   })
 }
+
+// ── Thuế VAT (%) — đơn giá bảng giá là CHƯA VAT, phí đơn = subtotal × (1+VAT) ──
+export const DEFAULT_VAT = 10
+
+export function useVatPercent() {
+  return useQuery({
+    queryKey: ['settings', 'vat_percent'],
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase
+        .from('settings').select('value').eq('key', 'vat_percent').maybeSingle()
+      if (error) throw error
+      const n = Number(data?.value)
+      return Number.isFinite(n) ? n : DEFAULT_VAT
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useSaveVatPercent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (percent: number) => {
+      const { error } = await supabase.from('settings').upsert({
+        key: 'vat_percent',
+        value: percent,
+        updated_at: new Date().toISOString(),
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', 'vat_percent'] }),
+  })
+}

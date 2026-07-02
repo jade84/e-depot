@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScreenHeader, PhotoUploadSlot } from '../../components/mobile'
+import { ScreenHeader, PhotoUploadSlot, FeeBreakdown } from '../../components/mobile'
 import { useVehicles } from '../../features/vehicles'
 import { useDrivers } from '../../features/drivers'
 import { useCreateOrder } from '../../features/orders'
 import { useCatalog } from '../../features/catalog'
-import { usePricing, matchPrice } from '../../features/pricing'
+import { usePricing, matchPrice, withVat } from '../../features/pricing'
+import { useVatPercent, DEFAULT_VAT } from '../../features/settings'
 import { supabase } from '../../lib/supabase'
 import { DEPOTS, CARRIERS, CONT_TYPES } from '../../lib/options'
 
@@ -25,6 +26,7 @@ export function LayContPage() {
   const { data: carrierList } = useCatalog('carrier')
   const { data: contList } = useCatalog('cont_type')
   const { data: prices } = usePricing()
+  const { data: vat } = useVatPercent()
   const depots = depotList?.length ? depotList : DEPOTS
   const carriers = carrierList?.length ? carrierList : CARRIERS
   const contTypes = contList?.length ? contList : CONT_TYPES
@@ -56,10 +58,13 @@ export function LayContPage() {
   const assignedDriver = useMemo(() => drivers?.find(d => d.id === vehicle?.driver_id) || null, [drivers, vehicle])
   const driver = assignedDriver || drivers?.find(d => d.id === manualDriverId) || null
 
-  // Đơn giá theo bảng giá (admin) → tự tính phí nâng hạ. null = chưa có giá → nhập tay.
+  // Đơn giá theo bảng giá (admin) là CHƯA VAT → phí = tạm tính × (1 + VAT).
+  // null = chưa có giá → tài xế nhập tay.
+  const vatPct = vat ?? DEFAULT_VAT
   const soLuongNum = parseInt(soLuong, 10) || 0
-  const unitPrice = matchPrice(prices, { loai: 'lay', loai_cont: loaiCont, depot, hang_tau: hangTau })
-  const autoTotal = unitPrice != null ? unitPrice * soLuongNum : null
+  const unitPrice = matchPrice(prices, { loai_cont: loaiCont, depot, hang_tau: hangTau })
+  const subtotal = unitPrice != null ? unitPrice * soLuongNum : null
+  const autoTotal = subtotal != null ? withVat(subtotal, vatPct) : null
 
   function setPhoto(i: number, u: string | null) {
     setPhotos(p => { const n = [...p]; n[i] = u; return n })
@@ -178,10 +183,8 @@ export function LayContPage() {
           </Field>
           {autoTotal != null ? (
             <Field label="Phí nâng hạ (tự tính theo bảng giá)">
-              <div className="h-12 px-4 rounded-xl border border-brand-200 bg-brand-50 flex items-center justify-between">
-                <span className="text-[15px] font-bold text-brand-800">{autoTotal.toLocaleString('vi-VN')} đ</span>
-                <span className="text-[11px] text-ink-400">{unitPrice!.toLocaleString('vi-VN')}đ × {soLuongNum}</span>
-              </div>
+              <FeeBreakdown subtotal={subtotal!} vatPct={vatPct} total={autoTotal}
+                unitPrice={unitPrice!} qty={soLuongNum} />
             </Field>
           ) : (
             <Field label="Phí nâng hạ (nếu biết)">

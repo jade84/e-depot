@@ -4,21 +4,21 @@
 -- Chạy 1 lần trong SQL Editor.
 -- ============================================================
 
+-- Giá nâng hạ Lấy & Trả như nhau → không tách theo nghiệp vụ. Đơn giá CHƯA VAT.
 create table if not exists public.pricing (
   id         uuid primary key default gen_random_uuid(),
-  loai       text not null,               -- 'lay' | 'tra'
   loai_cont  text not null,               -- '20''DC', '40''HC', ...
   depot      text,                         -- null = áp dụng MỌI depot
   hang_tau   text,                         -- null = áp dụng MỌI hãng tàu
-  don_gia    numeric not null default 0,   -- phí / 1 cont (VND)
+  don_gia    numeric not null default 0,   -- phí / 1 cont (VND, CHƯA VAT)
   active     boolean not null default true,
   created_at timestamptz not null default now()
 );
 
--- Mỗi tổ hợp (loai, loai_cont, depot, hang_tau) chỉ 1 dòng.
+-- Mỗi tổ hợp (loai_cont, depot, hang_tau) chỉ 1 dòng.
 -- coalesce để null (mọi depot/hãng tàu) cũng nằm trong ràng buộc unique.
 create unique index if not exists pricing_key
-  on public.pricing (loai, loai_cont, coalesce(depot,''), coalesce(hang_tau,''));
+  on public.pricing (loai_cont, coalesce(depot,''), coalesce(hang_tau,''));
 
 alter table public.pricing enable row level security;
 
@@ -39,8 +39,7 @@ create policy "pricing admin write" on public.pricing for all to authenticated
 -- ── Cấp quyền admin cho 1 tài khoản (thay <UID> bằng id trong bảng users) ──
 -- update public.users set role = 'admin' where id = '<UID>';
 
--- ── Seed ví dụ (tuỳ chọn — sửa/xoá theo giá thực tế) ──
--- insert into public.pricing (loai, loai_cont, don_gia) values
---   ('lay','20''DC', 200000), ('lay','40''HC', 350000),
---   ('tra','20''DC', 200000), ('tra','40''HC', 350000)
+-- ── Seed ví dụ (tuỳ chọn — sửa/xoá theo giá thực tế, CHƯA VAT) ──
+-- insert into public.pricing (loai_cont, don_gia) values
+--   ('20''DC', 200000), ('40''DC', 300000), ('40''HC', 350000)
 -- on conflict do nothing;
