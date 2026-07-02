@@ -45,6 +45,7 @@ Chưa có test framework (không có script `test`).
   - `14_vehicles_approve.sql` policy cho admin đọc/ghi mọi `vehicles` (duyệt xe)
   - `15_notifications.sql` bảng `notifications` (thông báo cho nhà xe) — đọc/sửa/xoá của mình, admin insert
   - `16_drivers_approve.sql` · `17_orders_approve.sql` policy cho admin đọc/ghi mọi `drivers`/`orders` (duyệt)
+  - `18_permissions.sql` `users.perms text[]` + hàm `is_admin()`/`has_perm()`/`has_any_perm()` — **rewire lại các policy GHI** của khu quản trị theo quyền chi tiết (chạy SAU 07..17)
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
@@ -54,7 +55,7 @@ Chưa có test framework (không có script `test`).
 - `pricing`: `(loai_cont, depot?, hang_tau_nhom?) → don_gia` (phí/1 cont, **CHƯA VAT**). Lấy & Trả cùng giá (không tách `loai`). `hang_tau_nhom` = nhóm hãng tàu (`noi_dia`/`quoc_te`, null=mọi hãng); depot null=mọi depot. `matchPrice()` ưu tiên dòng cụ thể hơn — nhận `carrierGroup` (tra từ `catalog.nhom` của hãng tàu trên đơn qua `useCarriers`).
 - `catalog.nhom`: chỉ dùng cho `type='carrier'` để phân nhóm Nội địa/Quốc tế (`CARRIER_GROUPS`, `CARRIER_GROUP_LABEL`).
 - VAT (%) lưu ở `settings.vat_percent` (mặc định 10). Phí đơn = `don_gia × số_lượng × (1 + VAT%)` = `withVat()`. `settings` key thiếu → hook tự fallback + upsert khi admin lưu (không cần migration cho `vat_percent`).
-- **Admin** = `users.role = 'admin'` (set thủ công trong DB). Điểm vào Admin trên HomePage + trang chỉ hiện/cho phép khi `profile.role === 'admin'` (RLS chặn ghi ở tầng DB).
+- **Phân quyền**: `users.role` = `admin` (full) / `staff` (theo `users.perms text[]`) / `driver`. Quyền: `PermKey` trong `src/lib/permissions.ts` (`approve_vehicle`, `pricing`, `permissions`, …). Kiểm quyền bằng `useAuth().can(perm)` (admin luôn true). RLS tầng DB kiểm bằng `has_perm(perm)` (18) — nên UI `can()` và policy phải khớp key. **Admin — Phân quyền** (`/admin/phan-quyen`, quyền `permissions`): gán role + tick quyền cho từng user (`useAllUsers`/`useUpdateUserAccess`). HomePage lọc mục Quản trị theo `can()`.
 - `vehicles.driver_id` → gán tài xế. `orders.loai` = `'lay'` | `'tra'`, `trang_thai` mặc định `cho_duyet` (giá trị dùng: `cho_duyet`, `huy`, …). `orders.phi_nang_ha` = phí (số tiền) → dùng cho trang Thanh toán.
 
 ## Kiến trúc (đọc nhanh để nắm)

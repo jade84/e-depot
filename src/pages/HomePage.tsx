@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Truck, Users, LogIn, LogOut, ClipboardList,
-  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search, Tags, ListChecks, Landmark, LayoutGrid, Contact,
+  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search, Tags, ListChecks, Landmark, LayoutGrid, Contact, KeyRound,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import type { PermKey } from '../lib/permissions'
 
 type IconType = React.ComponentType<{ size?: number; className?: string; color?: string }>
-type Item = { label: string; icon: IconType; to?: string; color: string; bg: string }
+type Item = { label: string; icon: IconType; to?: string; color: string; bg: string; perm?: PermKey }
 
 // Nghiệp vụ nhà xe (giống app mẫu e-Depot)
 const NGHIEP_VU: Item[] = [
@@ -26,16 +27,17 @@ const QUAN_LY: Item[] = [
   { label: 'Quản lý nhân sự',     icon: Users,  color: '#2563eb', bg: '#dbeafe', to: '/nhan-su' },
 ]
 
-// Quản trị (chỉ hiện với admin)
+// Quản trị (hiện theo quyền được cấp)
 const ADMIN: Item[] = [
-  { label: 'Bảng giá',  icon: Tags,       color: '#0d9488', bg: '#ccfbf1', to: '/admin/bang-gia' },
-  { label: 'Danh mục',  icon: ListChecks, color: '#7c3aed', bg: '#ede9fe', to: '/admin/danh-muc' },
-  { label: 'Ngân hàng', icon: Landmark,   color: '#0369a1', bg: '#e0f2fe', to: '/admin/ngan-hang' },
-  { label: 'Dịch vụ',   icon: LayoutGrid, color: '#c026d3', bg: '#fae8ff', to: '/admin/dich-vu' },
-  { label: 'Liên hệ',   icon: Contact,    color: '#0891b2', bg: '#cffafe', to: '/admin/lien-he' },
-  { label: 'Duyệt xe',      icon: Truck,         color: '#dc2626', bg: '#fee2e2', to: '/admin/duyet-xe' },
-  { label: 'Duyệt tài xế',  icon: Users,         color: '#2563eb', bg: '#dbeafe', to: '/admin/duyet-tai-xe' },
-  { label: 'Duyệt đơn',     icon: ClipboardCheck, color: '#ca8a04', bg: '#fef9c3', to: '/admin/duyet-don' },
+  { label: 'Duyệt xe',      icon: Truck,         color: '#dc2626', bg: '#fee2e2', to: '/admin/duyet-xe',      perm: 'approve_vehicle' },
+  { label: 'Duyệt tài xế',  icon: Users,         color: '#2563eb', bg: '#dbeafe', to: '/admin/duyet-tai-xe',  perm: 'approve_driver' },
+  { label: 'Duyệt đơn',     icon: ClipboardCheck, color: '#ca8a04', bg: '#fef9c3', to: '/admin/duyet-don',     perm: 'approve_order' },
+  { label: 'Bảng giá',  icon: Tags,       color: '#0d9488', bg: '#ccfbf1', to: '/admin/bang-gia',  perm: 'pricing' },
+  { label: 'Danh mục',  icon: ListChecks, color: '#7c3aed', bg: '#ede9fe', to: '/admin/danh-muc',  perm: 'catalog' },
+  { label: 'Dịch vụ',   icon: LayoutGrid, color: '#c026d3', bg: '#fae8ff', to: '/admin/dich-vu',   perm: 'services' },
+  { label: 'Ngân hàng', icon: Landmark,   color: '#0369a1', bg: '#e0f2fe', to: '/admin/ngan-hang', perm: 'bank' },
+  { label: 'Liên hệ',   icon: Contact,    color: '#0891b2', bg: '#cffafe', to: '/admin/lien-he',   perm: 'contact' },
+  { label: 'Phân quyền', icon: KeyRound,  color: '#4f46e5', bg: '#e0e7ff', to: '/admin/phan-quyen', perm: 'permissions' },
 ]
 
 function Grid({ title, items }: { title: string; items: Item[] }) {
@@ -62,8 +64,9 @@ function Grid({ title, items }: { title: string; items: Item[] }) {
 }
 
 export function HomePage() {
-  const { profile } = useAuth()
+  const { profile, can } = useAuth()
   const displayName = profile?.name?.trim() || profile?.phone || 'Người dùng'
+  const adminItems = ADMIN.filter(i => !i.perm || can(i.perm))
   return (
     <div className="pb-4">
       {/* Header */}
@@ -91,7 +94,7 @@ export function HomePage() {
 
       <Grid title="Nghiệp vụ nhà xe" items={NGHIEP_VU} />
       <Grid title="Quản lý" items={QUAN_LY} />
-      {profile?.role === 'admin' && <Grid title="Quản trị" items={ADMIN} />}
+      {adminItems.length > 0 && <Grid title="Quản trị" items={adminItems} />}
     </div>
   )
 }

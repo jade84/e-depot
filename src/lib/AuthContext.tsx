@@ -8,6 +8,7 @@ export type Profile = {
   phone: string            // số điện thoại — dùng để đăng nhập
   cccd?: string | null     // số CCCD/CMND (làm thủ tục tại depot)
   role?: string
+  perms?: string[]         // quyền chi tiết (khi role != 'admin')
   demo?: boolean
 }
 
@@ -17,6 +18,7 @@ type AuthState = {
   profile: Profile | null
   loading: boolean
   ready: boolean           // Supabase đã cấu hình chưa
+  can: (perm: string) => boolean   // role='admin' full quyền; hoặc có perm cụ thể
   signIn: (phone: string, password: string) => Promise<{ error?: string }>
   signUp: (input: SignUpInput) => Promise<{ error?: string }>
   signInDemo: () => void
@@ -39,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const meta = (u.user_metadata ?? {}) as { name?: string; phone?: string; cccd?: string }
     const emailPhone = (u.email ?? '').split('@')[0]
     // Đọc hồ sơ trong bảng users (có thể lỗi nếu thiếu cột → dùng metadata thay thế)
-    const { data } = await supabase.from('users').select('name, phone, cccd, role').eq('id', u.id).maybeSingle()
+    const { data } = await supabase.from('users').select('name, phone, cccd, role, perms').eq('id', u.id).maybeSingle()
     const name = (data?.name?.trim() || meta.name?.trim() || '')
     const phone = (data?.phone || meta.phone || emailPhone)
     setProfile({
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: name || phone,
       cccd: data?.cccd ?? meta.cccd ?? null,
       role: data?.role ?? 'driver',
+      perms: (data as { perms?: string[] } | null)?.perms ?? [],
     })
   }
 
@@ -104,8 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null)
   }
 
+  function can(perm: string): boolean {
+    if (!profile) return false
+    if (profile.role === 'admin') return true
+    return (profile.perms ?? []).includes(perm)
+  }
+
   return (
-    <AuthContext.Provider value={{ profile, loading, ready: isSupabaseReady, signIn, signUp, signInDemo, signOut }}>
+    <AuthContext.Provider value={{ profile, loading, ready: isSupabaseReady, can, signIn, signUp, signInDemo, signOut }}>
       {children}
     </AuthContext.Provider>
   )

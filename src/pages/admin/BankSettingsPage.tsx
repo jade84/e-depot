@@ -7,7 +7,7 @@ import { useBankInfo, useSaveBankInfo, DEFAULT_BANK, type BankInfo } from '../..
 const inputCls = 'w-full h-11 px-3 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white transition'
 
 export function BankSettingsPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: bank, isLoading } = useBankInfo()
   const save = useSaveBankInfo()
   const [f, setF] = useState<BankInfo>(DEFAULT_BANK)
@@ -16,7 +16,7 @@ export function BankSettingsPage() {
   // Nạp dữ liệu hiện tại vào form khi tải xong.
   useEffect(() => { if (bank) setF(bank) }, [bank])
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = can('bank')
   const set = <K extends keyof BankInfo>(k: K, v: BankInfo[K]) => setF(s => ({ ...s, [k]: v }))
 
   if (!isAdmin) {

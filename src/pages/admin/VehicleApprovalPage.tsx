@@ -11,13 +11,13 @@ const STATUS = {
 } as const
 
 export function VehicleApprovalPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: vehicles, isLoading } = useAllVehicles()
   const review = useReviewVehicle()
   const [tab, setTab] = useState<'cho_duyet' | 'all'>('cho_duyet')
   const [rejecting, setRejecting] = useState<Vehicle | null>(null)
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = can('approve_vehicle')
 
   if (!isAdmin) {
     return (

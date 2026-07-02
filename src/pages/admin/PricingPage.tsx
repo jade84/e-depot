@@ -29,7 +29,7 @@ function normGroup(s: string): 'noi_dia' | 'quoc_te' | null {
 }
 
 export function PricingPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: rows, isLoading } = usePricing()
   const del = useDeletePricing()
   const imp = useImportPricing()
@@ -44,7 +44,7 @@ export function PricingPage() {
   const [vatInput, setVatInput] = useState('')
   useEffect(() => { if (vat != null) setVatInput(String(vat)) }, [vat])
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = can('pricing')
 
   if (!isAdmin) {
     return (

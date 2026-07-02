@@ -15,12 +15,12 @@ const emptyForm = (sort: number): ServiceInput => ({
 })
 
 export function ServicesPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: rows, isLoading } = useServicesAdmin()
   const del = useDeleteService()
   const [editing, setEditing] = useState<ServiceInput | null>(null)
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = can('services')
 
   if (!isAdmin) {
     return (

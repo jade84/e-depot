@@ -11,13 +11,13 @@ const STATUS = {
 } as const
 
 export function DriverApprovalPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: drivers, isLoading } = useAllDrivers()
   const review = useReviewDriver()
   const [tab, setTab] = useState<'cho_duyet' | 'all'>('cho_duyet')
   const [rejecting, setRejecting] = useState<Driver | null>(null)
 
-  if (profile?.role !== 'admin') {
+  if (!can('approve_driver')) {
     return (
       <div className="h-full flex flex-col bg-ink-100">
         <ScreenHeader title="Duyệt tài xế" />

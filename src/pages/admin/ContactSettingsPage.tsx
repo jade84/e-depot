@@ -7,7 +7,7 @@ import { useCompanyInfo, useSaveCompanyInfo, DEFAULT_COMPANY, type CompanyInfo }
 const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-ink-50 text-[14px] outline-none focus:border-brand-500 focus:bg-white transition'
 
 export function ContactSettingsPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: company, isLoading } = useCompanyInfo()
   const save = useSaveCompanyInfo()
   const [f, setF] = useState<CompanyInfo>(DEFAULT_COMPANY)
@@ -15,7 +15,7 @@ export function ContactSettingsPage() {
 
   useEffect(() => { if (company) setF(company) }, [company])
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = can('contact')
   const set = <K extends keyof CompanyInfo>(k: K, v: CompanyInfo[K]) => setF(s => ({ ...s, [k]: v }))
 
   if (!isAdmin) {

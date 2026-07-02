@@ -14,14 +14,14 @@ const TONE: Record<string, string> = {
 }
 
 export function OrderApprovalPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const { data: orders, isLoading } = useAllOrders()
   const review = useReviewOrder()
   const confirmPay = useConfirmPayment()
   const [tab, setTab] = useState<'cho_duyet' | 'chua_tt' | 'all'>('cho_duyet')
   const [rejecting, setRejecting] = useState<Order | null>(null)
 
-  if (profile?.role !== 'admin') {
+  if (!can('approve_order')) {
     return (
       <div className="h-full flex flex-col bg-ink-100">
         <ScreenHeader title="Duyệt đơn" />

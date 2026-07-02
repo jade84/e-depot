@@ -17,13 +17,13 @@ const TABS: { type: CatalogType; label: string }[] = [
 ]
 
 export function CatalogPage() {
-  const { profile } = useAuth()
+  const { can } = useAuth()
   const [tab, setTab] = useState<CatalogType>('depot')
   const [editing, setEditing] = useState<CatalogInput | null>(null)
   const { data: items, isLoading } = useCatalogAdmin(tab)
   const del = useDeleteCatalog()
 
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = can('catalog')
 
   if (!isAdmin) {
     return (
