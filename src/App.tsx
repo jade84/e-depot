@@ -8,6 +8,8 @@ import { RegisterPage } from './pages/RegisterPage'
 import { HomePage } from './pages/HomePage'
 import { ProfilePage } from './pages/ProfilePage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { InfoPage } from './pages/InfoPage'
+import { ServiceDetailPage } from './pages/ServiceDetailPage'
 import { VehiclesPage } from './pages/vehicles/VehiclesPage'
 import { VehicleAddPage } from './pages/vehicles/VehicleAddPage'
 import { AssignDriverPage } from './pages/vehicles/AssignDriverPage'
@@ -21,6 +23,8 @@ import { PaymentPage } from './pages/orders/PaymentPage'
 import { PricingPage } from './pages/admin/PricingPage'
 import { CatalogPage } from './pages/admin/CatalogPage'
 import { BankSettingsPage } from './pages/admin/BankSettingsPage'
+import { ServicesPage } from './pages/admin/ServicesPage'
+import { ContactSettingsPage } from './pages/admin/ContactSettingsPage'
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -51,7 +55,7 @@ export default function App() {
               }
             >
               <Route path="/" element={<HomePage />} />
-              <Route path="/tin-tuc" element={<PlaceholderPage title="Tin tức" />} />
+              <Route path="/thong-tin" element={<InfoPage />} />
               <Route path="/thong-bao" element={<PlaceholderPage title="Thông báo" />} />
               <Route path="/tai-khoan" element={<ProfilePage />} />
             </Route>
@@ -79,6 +83,9 @@ export default function App() {
               <Route path="/admin/bang-gia" element={<PricingPage />} />
               <Route path="/admin/danh-muc" element={<CatalogPage />} />
               <Route path="/admin/ngan-hang" element={<BankSettingsPage />} />
+              <Route path="/admin/dich-vu" element={<ServicesPage />} />
+              <Route path="/admin/lien-he" element={<ContactSettingsPage />} />
+              <Route path="/thong-tin/dich-vu/:id" element={<ServiceDetailPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

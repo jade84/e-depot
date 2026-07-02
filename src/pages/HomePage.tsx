@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Truck, Users, LogIn, LogOut, ClipboardList,
-  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search, Tags, ListChecks, Landmark,
+  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search, Tags, ListChecks, Landmark, LayoutGrid, Contact,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -31,6 +31,8 @@ const ADMIN: Item[] = [
   { label: 'Bảng giá',  icon: Tags,       color: '#0d9488', bg: '#ccfbf1', to: '/admin/bang-gia' },
   { label: 'Danh mục',  icon: ListChecks, color: '#7c3aed', bg: '#ede9fe', to: '/admin/danh-muc' },
   { label: 'Ngân hàng', icon: Landmark,   color: '#0369a1', bg: '#e0f2fe', to: '/admin/ngan-hang' },
+  { label: 'Dịch vụ',   icon: LayoutGrid, color: '#c026d3', bg: '#fae8ff', to: '/admin/dich-vu' },
+  { label: 'Liên hệ',   icon: Contact,    color: '#0891b2', bg: '#cffafe', to: '/admin/lien-he' },
 ]
 
 function Grid({ title, items }: { title: string; items: Item[] }) {

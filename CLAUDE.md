@@ -37,10 +37,11 @@ Chưa có test framework (không có script `test`).
   - `03_vehicles.sql`, `04_drivers.sql`, `05_orders.sql`, `06_catalog.sql` (bảng + RLS + storage bucket public)
   - `07_pricing.sql` bảng `pricing` (bảng giá) — RLS: đọc chung, **ghi chỉ `role='admin'`**
   - `08_catalog_admin.sql` mở quyền admin cho `catalog` (đọc cả dòng tắt + ghi)
-  - `09_settings.sql` bảng `settings` key-value jsonb (đọc chung, ghi admin) — chứa `bank_info`, `vat_percent`
+  - `09_settings.sql` bảng `settings` key-value jsonb (đọc chung, ghi admin) — chứa `bank_info`, `vat_percent`, `company_info`
   - `10_pricing_drop_loai.sql` bỏ cột `pricing.loai` (Lấy/Trả cùng giá) — chạy sau 07
   - `11_catalog_group.sql` thêm cột `catalog.nhom` (nhóm hãng tàu: `noi_dia`/`quoc_te`)
   - `12_pricing_carrier_group.sql` đổi `pricing.hang_tau` → `pricing.hang_tau_nhom` (áp giá theo nhóm)
+  - `13_services.sql` bảng `services` (dịch vụ cty ở trang Thông tin) — RLS đọc chung/ghi admin
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
@@ -60,7 +61,7 @@ Chưa có test framework (không có script `test`).
   - Insert luôn gắn `owner_id = auth.uid()` (khớp RLS). Type `X` (bản ghi DB) và `NewX` (payload tạo) khai báo cùng file.
 - **Auth (`src/lib/AuthContext.tsx`)**: `AuthProvider` bọc toàn app, hook `useAuth()` trả `{ profile, loading, ready, signIn, signUp, signInDemo, signOut }`. SĐT → email nội bộ qua `toEmail()`. **Chế độ demo** lưu ở `localStorage` (`edepot_demo_profile`) khi Supabase chưa cấu hình — kiểm tra bằng `isSupabaseReady`.
 - **Routing (`src/App.tsx`)**: `/login`, `/register` public. Phần còn lại bọc trong `ProtectedRoute` và chia **2 nhóm layout**:
-  1. Có **bottom nav** (`MobileLayout` trong `src/mobile/`): `/`, `/tin-tuc`, `/thong-bao`, `/tai-khoan`.
+  1. Có **bottom nav** (`MobileLayout` trong `src/mobile/`): `/`, `/thong-tin` (giới thiệu công ty + dịch vụ — `InfoPage`), `/thong-bao`, `/tai-khoan`.
   2. **Full-screen** (không nav, khung `max-w-[480px]`): các trang nghiệp vụ `/lay-cont`, `/tra-cont`, `/don-hang`, `/don-hang/:id`, `/don-hang/:id/thanh-toan`, `/phuong-tien*`, `/nhan-su*`.
 - **UI dùng chung**: `src/components/mobile.tsx` (`ScreenHeader` có nút back `nav(-1)`, `PhotoSlot`, …). Icon: `lucide-react`.
 
@@ -75,6 +76,7 @@ Chưa có test framework (không có script `test`).
 - **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đọc từ `settings.bank_info` (`useBankInfo`, fallback `DEFAULT_BANK`).
 - **Admin — Ngân hàng** (`/admin/ngan-hang`, chỉ admin): sửa `bank_info` (mã VietQR, số TK, tên chủ TK, tên NH) + xem trước QR. `useSaveBankInfo`.
 - **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing` (1 giá/loại cont) + chỉnh **% VAT** + **import/export CSV** (`src/lib/csv.ts`, `useImportPricing` upsert theo `loai_cont+depot+hang_tau`). Form Lấy/Trả cont **tự tính `phi_nang_ha`** khi có giá khớp (`matchPrice` → `withVat`), hiện bảng **trước VAT / VAT / sau VAT** (`FeeBreakdown` trong `components/mobile.tsx`); chưa có giá thì tài xế nhập tay.
+- **Trang Thông tin** (`/thong-tin`, `InfoPage`): giới thiệu công ty + **dịch vụ động** (`useServices`) → bấm mở chi tiết `/thong-tin/dich-vu/:id` (`ServiceDetailPage`, `services.noi_dung`). Mục Liên hệ đọc từ `settings.company_info` (`useCompanyInfo`). **Admin — Dịch vụ** (`/admin/dich-vu`): CRUD `services` (title/mô tả/nội dung/icon/sort/ẩn-hiện). **Admin — Liên hệ** (`/admin/lien-he`): sửa `company_info` (trụ sở/văn phòng/điện thoại/email) qua `useSaveCompanyInfo`.
 - **Admin — Danh mục** (`/admin/danh-muc`, chỉ admin): CRUD `catalog` theo tab depot/hãng tàu/loại cont (`useCatalogAdmin` đọc cả dòng tắt, `useUpsertCatalog`/`useDeleteCatalog`). Tab hãng tàu chọn **nhóm Nội địa/Quốc tế** (`catalog.nhom`) để bảng giá áp theo nhóm. Form nghiệp vụ tự cập nhật theo (`useCatalog`).
 
 ## Quy ước quan trọng (ĐỪNG phá vỡ)

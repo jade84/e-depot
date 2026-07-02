@@ -44,6 +44,49 @@ export function useSaveBankInfo() {
   })
 }
 
+// ── Thông tin liên hệ công ty (hiện ở trang Thông tin) ──────────────────────
+export type CompanyInfo = {
+  truSo: string      // địa chỉ trụ sở
+  vanPhong: string   // địa chỉ văn phòng
+  dienThoai: string  // số điện thoại
+  email: string
+}
+
+export const DEFAULT_COMPANY: CompanyInfo = {
+  truSo: '161 Nguyễn Văn Quỳ, P. Phú Thuận, TP. Hồ Chí Minh',
+  vanPhong: 'Tầng M, Titan Tower, 70-72-74 Đường Số 37, P. An Khánh, TP. Hồ Chí Minh',
+  dienThoai: '(028) 2210.8750',
+  email: 'info@grlogs.com',
+}
+
+export function useCompanyInfo() {
+  return useQuery({
+    queryKey: ['settings', 'company_info'],
+    queryFn: async (): Promise<CompanyInfo> => {
+      const { data, error } = await supabase
+        .from('settings').select('value').eq('key', 'company_info').maybeSingle()
+      if (error) throw error
+      return { ...DEFAULT_COMPANY, ...((data?.value as Partial<CompanyInfo>) ?? {}) }
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useSaveCompanyInfo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (c: CompanyInfo) => {
+      const { error } = await supabase.from('settings').upsert({
+        key: 'company_info',
+        value: c,
+        updated_at: new Date().toISOString(),
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', 'company_info'] }),
+  })
+}
+
 // ── Thuế VAT (%) — đơn giá bảng giá là CHƯA VAT, phí đơn = subtotal × (1+VAT) ──
 export const DEFAULT_VAT = 10
 

@@ -1,10 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Newspaper, Bell, ClipboardList, User } from 'lucide-react'
+import { Info, Bell, ClipboardList, User } from 'lucide-react'
 
 type Tab = { to: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; end?: boolean }
 
 const LEFT: Tab[] = [
-  { to: '/tin-tuc',   label: 'Tin tức',   icon: Newspaper },
+  { to: '/thong-tin', label: 'Thông tin', icon: Info },
   { to: '/thong-bao', label: 'Thông báo', icon: Bell },
 ]
 const RIGHT: Tab[] = [
