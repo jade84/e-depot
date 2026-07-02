@@ -36,6 +36,7 @@ Chưa có test framework (không có script `test`).
   - `01_init.sql` users (phone/name/cccd) + trigger tạo hồ sơ khi signUp
   - `03_vehicles.sql`, `04_drivers.sql`, `05_orders.sql`, `06_catalog.sql` (bảng + RLS + storage bucket public)
   - `07_pricing.sql` bảng `pricing` (bảng giá) — RLS: đọc chung, **ghi chỉ `role='admin'`**
+  - `08_catalog_admin.sql` mở quyền admin cho `catalog` (đọc cả dòng tắt + ghi)
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
@@ -66,7 +67,8 @@ Chưa có test framework (không có script `test`).
 - **Đơn hàng** (`/don-hang`): danh sách + hủy đơn.
 - **Chi tiết đơn** (`/don-hang/:id`): xem full thông tin đơn + ảnh.
 - **Thanh toán** (`/don-hang/:id/thanh-toan`): sinh **QR VietQR** (`img.vietqr.io`) từ `phi_nang_ha` + nội dung CK, các dòng thông tin CK bấm **Copy**. Thông tin ngân hàng đang hardcode trong `PaymentPage.tsx` (`BANK_INFO`) — dự kiến chuyển sang `catalog`.
-- **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing`. Form Lấy/Trả cont **tự điền `phi_nang_ha` = đơn giá × số lượng** khi có giá khớp (`matchPrice`), ô phí thành read-only; nếu chưa có giá thì tài xế nhập tay như cũ.
+- **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing` + **import/export CSV** (`src/lib/csv.ts`, `useImportPricing` upsert theo `loai+loai_cont+depot+hang_tau`). Form Lấy/Trả cont **tự điền `phi_nang_ha` = đơn giá × số lượng** khi có giá khớp (`matchPrice`), ô phí thành read-only; nếu chưa có giá thì tài xế nhập tay như cũ.
+- **Admin — Danh mục** (`/admin/danh-muc`, chỉ admin): CRUD `catalog` theo tab depot/hãng tàu/loại cont (`useCatalogAdmin` đọc cả dòng tắt, `useUpsertCatalog`/`useDeleteCatalog`). Form nghiệp vụ tự cập nhật theo (`useCatalog`).
 
 ## Quy ước quan trọng (ĐỪNG phá vỡ)
 - **Ảnh: upload-NGAY khi chọn** (component `PhotoUploadSlot`) → state giữ URL (chuỗi), KHÔNG giữ File.
@@ -84,7 +86,7 @@ Chưa có test framework (không có script `test`).
 ## Việc còn lại / định hướng
 - Xác nhận deploy Vercel chạy (test HTTPS trên điện thoại). **Nhớ chạy `supabase/07_pricing.sql`** trên Dashboard trước khi dùng Bảng giá.
 - **Thanh toán**: chuyển `BANK_INFO` từ hardcode sang `catalog`.
-- **Trang Admin (còn lại)**: CRUD danh mục `catalog` (depot/hãng tàu/loại cont). Có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
+- **Trang Admin (còn lại)**: có thể thêm luồng **duyệt** xe/tài xế/đơn (hiện đang bỏ duyệt).
 - (Sau) đăng nhập cho tài xế (tạo tài khoản tài xế) — cần Edge Function với service_role.
 
 ## Bối cảnh
