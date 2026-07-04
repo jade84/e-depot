@@ -37,21 +37,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  async function loadProfile(u: User) {
+  // Hồ sơ cơ bản dựng NGAY từ session (không cần mạng) — để không kẹt màn "Đang tải"
+  // và không bị đá về /login khi query hồ sơ chưa kịp về.
+  function baseProfile(u: User): Profile {
     const meta = (u.user_metadata ?? {}) as { name?: string; phone?: string; cccd?: string }
     const emailPhone = (u.email ?? '').split('@')[0]
-    // Đọc hồ sơ trong bảng users (có thể lỗi nếu thiếu cột → dùng metadata thay thế)
-    const { data } = await supabase.from('users').select('name, phone, cccd, role, perms').eq('id', u.id).maybeSingle()
-    const name = (data?.name?.trim() || meta.name?.trim() || '')
-    const phone = (data?.phone || meta.phone || emailPhone)
-    setProfile({
-      id: u.id,
-      phone,
-      name: name || phone,
-      cccd: data?.cccd ?? meta.cccd ?? null,
-      role: data?.role ?? 'driver',
-      perms: (data as { perms?: string[] } | null)?.perms ?? [],
-    })
+    const phone = meta.phone || emailPhone
+    return { id: u.id, phone, name: meta.name?.trim() || phone, cccd: meta.cccd ?? null, role: 'driver', perms: [] }
+  }
+
+  // Đặt hồ sơ cơ bản ngay, rồi bổ sung role/perms từ bảng users (KHÔNG chặn UI, KHÔNG await).
+  function loadProfile(u: User) {
+    setProfile(prev => (prev && prev.id === u.id ? prev : baseProfile(u)))
+    supabase.from('users').select('name, phone, cccd, role, perms').eq('id', u.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        setProfile(p => (p && p.id === u.id) ? {
+          ...p,
+          name: data.name?.trim() || p.name,
+          phone: data.phone || p.phone,
+          cccd: data.cccd ?? p.cccd,
+          role: data.role ?? p.role,
+          perms: (data as { perms?: string[] }).perms ?? p.perms,
+        } : p)
+      }, () => { /* giữ hồ sơ cơ bản nếu lỗi mạng */ })
   }
 
   useEffect(() => {
@@ -61,17 +70,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (!isSupabaseReady) { setLoading(false); return }
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    let done = false
+    const finish = () => { if (!done) { done = true; setLoading(false) } }
+    // An toàn: không bao giờ kẹt "Đang tải" quá 6s dù mạng treo lúc máy vừa thức dậy.
+    const timer = setTimeout(finish, 6000)
+
+    supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user
-      if (u) await loadProfile(u)
-      setLoading(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      if (u) loadProfile(u)
+      finish()
+    }).catch(finish)
+
+    // QUAN TRỌNG: callback KHÔNG async — tránh deadlock khoá auth của supabase-js khi refresh token.
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       const u = session?.user
-      if (u) await loadProfile(u)
+      if (u) loadProfile(u)
       else if (!localStorage.getItem(DEMO_KEY)) setProfile(null)
+      finish()
     })
-    return () => sub.subscription.unsubscribe()
+    return () => { clearTimeout(timer); sub.subscription.unsubscribe() }
   }, [])
 
   async function signIn(phone: string, password: string): Promise<{ error?: string }> {
