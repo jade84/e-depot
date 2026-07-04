@@ -46,6 +46,7 @@ Chưa có test framework (không có script `test`).
   - `15_notifications.sql` bảng `notifications` (thông báo cho nhà xe) — đọc/sửa/xoá của mình, admin insert
   - `16_drivers_approve.sql` · `17_orders_approve.sql` policy cho admin đọc/ghi mọi `drivers`/`orders` (duyệt)
   - `18_permissions.sql` `users.perms text[]` + hàm `is_admin()`/`has_perm()`/`has_any_perm()` — **rewire lại các policy GHI** của khu quản trị theo quyền chi tiết (chạy SAU 07..17)
+  - `19_eir.sql` bảng `eir` (phiếu EIR) + `eir_settings` (cấu hình mẫu phiếu) — CHUNG với hệ thống **e-EIR** (dự án `../e-EIR`, bắt lệnh in ở cảng qua clawPDF rồi INSERT trực tiếp bằng role postgres → bỏ qua RLS). RLS chỉ mở **SELECT cho authenticated**. Xem `../e-EIR/docs/INTEGRATE-EDEPOT.md`.
   - `orders` có thêm cột `so_cont text[]` (ALTER — xem lịch sử chat/commit)
 - **RLS**: mỗi bản ghi thuộc `owner_id = auth.uid()` (nhà xe chỉ thấy dữ liệu của mình). `catalog` đọc chung cho mọi user.
 - Storage buckets **public**: `vehicles`, `drivers`, `orders`. Policy: đọc public, ghi/xoá trong thư mục `<uid>/...`.
@@ -85,6 +86,7 @@ Chưa có test framework (không có script `test`).
 - **Admin — Bảng giá** (`/admin/bang-gia`, chỉ admin): CRUD `pricing` (1 giá/loại cont) + chỉnh **% VAT** + **import/export CSV** (`src/lib/csv.ts`, `useImportPricing` upsert theo `loai_cont+depot+hang_tau`). Form Lấy/Trả cont **tự tính `phi_nang_ha`** khi có giá khớp (`matchPrice` → `withVat`), hiện bảng **trước VAT / VAT / sau VAT** (`FeeBreakdown` trong `components/mobile.tsx`); chưa có giá thì tài xế nhập tay.
 - **Trang Thông tin** (`/thong-tin`, `InfoPage`): giới thiệu công ty + **dịch vụ động** (`useServices`) → bấm mở chi tiết `/thong-tin/dich-vu/:id` (`ServiceDetailPage`, `services.noi_dung`). Mục Liên hệ đọc từ `settings.company_info` (`useCompanyInfo`). **Admin — Dịch vụ** (`/admin/dich-vu`): CRUD `services` (title/mô tả/nội dung/icon/sort/ẩn-hiện). **Admin — Liên hệ** (`/admin/lien-he`): sửa `company_info` (trụ sở/văn phòng/điện thoại/email) qua `useSaveCompanyInfo`.
 - **Admin — Danh mục** (`/admin/danh-muc`, chỉ admin): CRUD `catalog` theo tab depot/hãng tàu/loại cont (`useCatalogAdmin` đọc cả dòng tắt, `useUpsertCatalog`/`useDeleteCatalog`). Tab hãng tàu chọn **nhóm Nội địa/Quốc tế** (`catalog.nhom`) để bảng giá áp theo nhóm. Form nghiệp vụ tự cập nhật theo (`useCatalog`).
+- **Tra cứu phiếu EIR** (tab **"Tra cứu"** ở nav dưới, thay chỗ "Đơn hàng" — Đơn hàng vẫn ở lưới trang chủ): tích hợp hệ thống **e-EIR**. `src/features/eir.ts` (`useEirSearch`/`useEir`/`useEirSettings`/`eirIdFromQr`). `pages/eir/TraCuuEirPage` (ô tìm theo container/biển số/số phiếu/ngày + **Quét QR** trên phiếu qua `decodeQrFromFile`). `pages/eir/EirViewPage` (route `/eir/:id`, alias `/form/:id`) dựng lại mẫu phiếu EIR native + **In** (`window.print`) + QR xác thực (lib `qrcode`). Dữ liệu ở bảng `eir`/`eir_settings` (SQL `19`). Nguồn ghi = server e-EIR (không sửa ở repo này).
 
 ## Quy ước quan trọng (ĐỪNG phá vỡ)
 - **Ảnh: upload-NGAY khi chọn** (component `PhotoUploadSlot`) → state giữ URL (chuỗi), KHÔNG giữ File.

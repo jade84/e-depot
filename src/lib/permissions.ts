@@ -10,6 +10,7 @@ export type PermKey =
   | 'services'
   | 'bank'
   | 'contact'
+  | 'eir_form'
   | 'permissions'
 
 export const PERMISSIONS: { key: PermKey; label: string; desc: string }[] = [
@@ -21,6 +22,7 @@ export const PERMISSIONS: { key: PermKey; label: string; desc: string }[] = [
   { key: 'services', label: 'Dịch vụ', desc: 'Nội dung dịch vụ trang Thông tin' },
   { key: 'bank', label: 'Ngân hàng', desc: 'Thông tin tài khoản nhận tiền' },
   { key: 'contact', label: 'Liên hệ', desc: 'Thông tin liên hệ công ty' },
+  { key: 'eir_form', label: 'Mẫu EIR', desc: 'Sửa header/logo/ngân hàng trên phiếu EIR' },
   { key: 'permissions', label: 'Phân quyền', desc: 'Cấp quyền cho nhân sự khác' },
 ]
 

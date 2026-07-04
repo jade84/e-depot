@@ -1,11 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Info, Bell, ClipboardList, User } from 'lucide-react'
+import { Info, Bell, ScanSearch, User } from 'lucide-react'
 import { useUnreadCount } from '../features/notifications'
 
 type Tab = { to: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; end?: boolean; badge?: number }
 
 const RIGHT: Tab[] = [
-  { to: '/don-hang',  label: 'Đơn hàng',  icon: ClipboardList },
+  { to: '/tra-cuu',   label: 'Tra cứu',   icon: ScanSearch },
   { to: '/tai-khoan', label: 'Tài khoản', icon: User },
 ]
 

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Truck, Users, LogIn, LogOut, ClipboardList,
-  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Search, Tags, ListChecks, Landmark, LayoutGrid, Contact, KeyRound,
+  BookOpen, History, RotateCcw, BarChart3, ClipboardCheck, Tags, ListChecks, Landmark, LayoutGrid, Contact, KeyRound, FileText,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import type { PermKey } from '../lib/permissions'
@@ -37,6 +37,7 @@ const ADMIN: Item[] = [
   { label: 'Dịch vụ',   icon: LayoutGrid, color: '#c026d3', bg: '#fae8ff', to: '/admin/dich-vu',   perm: 'services' },
   { label: 'Ngân hàng', icon: Landmark,   color: '#0369a1', bg: '#e0f2fe', to: '/admin/ngan-hang', perm: 'bank' },
   { label: 'Liên hệ',   icon: Contact,    color: '#0891b2', bg: '#cffafe', to: '/admin/lien-he',   perm: 'contact' },
+  { label: 'Mẫu EIR',   icon: FileText,   color: '#0d9488', bg: '#ccfbf1', to: '/admin/mau-eir',   perm: 'eir_form' },
   { label: 'Phân quyền', icon: KeyRound,  color: '#4f46e5', bg: '#e0e7ff', to: '/admin/phan-quyen', perm: 'permissions' },
 ]
 
@@ -84,13 +85,6 @@ export function HomePage() {
           {profile?.demo && (
             <span className="ml-auto text-[10px] bg-amber-400 text-amber-900 font-bold px-2 py-0.5 rounded-full">DEMO</span>
           )}
-        </div>
-
-        {/* Ô tìm kiếm */}
-        <div className="mt-4 bg-white rounded-xl flex items-center gap-2 px-3 h-11">
-          <Search size={18} className="text-ink-400" />
-          <input placeholder="Tìm Depot / Dịch vụ / Sản phẩm…"
-            className="flex-1 text-[13px] text-ink-700 outline-none bg-transparent" />
         </div>
       </div>
 

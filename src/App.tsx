@@ -10,6 +10,8 @@ import { ProfilePage } from './pages/ProfilePage'
 import { InfoPage } from './pages/InfoPage'
 import { ServiceDetailPage } from './pages/ServiceDetailPage'
 import { NotificationsPage } from './pages/NotificationsPage'
+import { TraCuuEirPage } from './pages/eir/TraCuuEirPage'
+import { EirViewPage } from './pages/eir/EirViewPage'
 import { VehiclesPage } from './pages/vehicles/VehiclesPage'
 import { VehicleAddPage } from './pages/vehicles/VehicleAddPage'
 import { AssignDriverPage } from './pages/vehicles/AssignDriverPage'
@@ -29,6 +31,7 @@ import { VehicleApprovalPage } from './pages/admin/VehicleApprovalPage'
 import { DriverApprovalPage } from './pages/admin/DriverApprovalPage'
 import { OrderApprovalPage } from './pages/admin/OrderApprovalPage'
 import { PermissionsPage } from './pages/admin/PermissionsPage'
+import { MauEirPage } from './pages/admin/MauEirPage'
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -61,6 +64,7 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/thong-tin" element={<InfoPage />} />
               <Route path="/thong-bao" element={<NotificationsPage />} />
+              <Route path="/tra-cuu" element={<TraCuuEirPage />} />
               <Route path="/tai-khoan" element={<ProfilePage />} />
             </Route>
 
@@ -93,7 +97,11 @@ export default function App() {
               <Route path="/admin/duyet-tai-xe" element={<DriverApprovalPage />} />
               <Route path="/admin/duyet-don" element={<OrderApprovalPage />} />
               <Route path="/admin/phan-quyen" element={<PermissionsPage />} />
+              <Route path="/admin/mau-eir" element={<MauEirPage />} />
               <Route path="/thong-tin/dich-vu/:id" element={<ServiceDetailPage />} />
+              {/* Xem/in 1 phiếu EIR (từ tra cứu hoặc quét QR trên phiếu in) */}
+              <Route path="/eir/:id" element={<EirViewPage />} />
+              <Route path="/form/:id" element={<EirViewPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
