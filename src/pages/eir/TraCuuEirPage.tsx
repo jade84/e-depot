@@ -73,10 +73,6 @@ export function TraCuuEirPage() {
       {/* Header tab */}
       <div className="safe-top bg-brand-800 text-white px-4 py-3.5 flex items-center gap-2 sticky top-0 z-10">
         <h1 className="text-[15px] font-bold flex-1">Tra cứu phiếu EIR</h1>
-        <button onClick={() => setScanMenu(true)}
-          className="flex items-center gap-1 text-[12px] font-semibold bg-white/15 px-2.5 py-1.5 rounded-lg active:bg-white/25">
-          <ScanLine size={14} /> Quét QR
-        </button>
       </div>
 
       {/* Ô tìm kiếm — nhập ĐÚNG số rồi bấm Tìm */}

@@ -66,6 +66,7 @@ export function MauEirPage() {
     try {
       const vals: Record<string, string> = {}
       for (const { key } of FIELDS) vals[key] = (f[key] || '').trim()
+      vals.retention_months = String(parseInt(f.retention_months || '0', 10) || 0)
       if (newLogo) { vals.logo_mime = newLogo.mime; vals.logo_b64 = newLogo.b64 }
       await save.mutateAsync(vals)
       setNewLogo(null)
@@ -125,6 +126,21 @@ export function MauEirPage() {
                   </div>
                 </div>
               ))}
+
+              {/* Tự động xoá phiếu cũ */}
+              <div className="pt-2 border-t border-ink-100">
+                <label className="text-[12px] font-semibold text-ink-600">Tự động xoá phiếu cũ hơn (tháng)</label>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <input type="number" min={0} inputMode="numeric" value={f.retention_months || '0'}
+                    onChange={e => set('retention_months', e.target.value.replace(/[^0-9]/g, ''))}
+                    className={inputCls + ' w-24 text-center'} />
+                  <span className="text-[12px] text-ink-400">tháng &nbsp;·&nbsp; <b>0 = giữ mãi</b></span>
+                </div>
+                <div className="text-[11px] text-ink-400 mt-1 leading-snug">
+                  Giúp DB không đầy khi in nhiều. Chỉ chạy khi đã bật tác vụ tự xoá trên Supabase
+                  (chạy 1 lần <code>21_eir_retention.sql</code>); đổi số ở đây có hiệu lực ngay lần chạy kế.
+                </div>
+              </div>
             </div>
 
             {msg && (

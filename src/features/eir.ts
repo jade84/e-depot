@@ -28,6 +28,7 @@ export type EirSettings = {
   bank1: string
   bank2: string
   bank3: string
+  retention_months: string  // tự xoá phiếu cũ hơn X tháng (0 = giữ mãi)
   logo_uri: string   // data URI của logo (ghép từ logo_mime + logo_b64), '' nếu chưa có
 }
 
@@ -43,6 +44,7 @@ export const EIR_SETTINGS_DEFAULTS: EirSettings = {
   bank1: '0071003931964, Vietcombank TP.HCM',
   bank2: '221180700000014, Eximbank - CN Sài Gòn',
   bank3: '67210329, ACB - CN Sài Gòn - TP.HCM',
+  retention_months: '0',
   logo_uri: '',
 }
 
