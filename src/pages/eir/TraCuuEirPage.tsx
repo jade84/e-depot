@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ScanLine, Loader2, FileText, ChevronRight, Camera, Image as ImageIcon } from 'lucide-react'
 import { useEirSearch, eirIdFromQr, type Eir } from '../../features/eir'
 import { decodeQrFromFile } from '../../lib/cccd'
+import { QrScanModal } from '../../components/QrScanModal'
 
 // Nhãn IN/OUT (nâng/hạ) từ field loai.
 function LoaiBadge({ loai }: { loai?: string }) {
@@ -41,7 +42,7 @@ export function TraCuuEirPage() {
   const [scanning, setScanning] = useState(false)
   const [scanErr, setScanErr] = useState('')
   const [scanMenu, setScanMenu] = useState(false)
-  const camRef = useRef<HTMLInputElement>(null)
+  const [liveScan, setLiveScan] = useState(false)
   const libRef = useRef<HTMLInputElement>(null)
 
   const { data: rows = [], isLoading, isFetching } = useEirSearch(q)
@@ -51,14 +52,21 @@ export function TraCuuEirPage() {
     setQ(input.trim())
   }
 
-  async function onScan(file: File) {
+  // Khi QR đọc được (từ camera trực tiếp hoặc ảnh): mở đúng phiếu.
+  const handleQr = useCallback((text: string) => {
+    setLiveScan(false)
+    const id = eirIdFromQr(text)
+    if (id) nav(`/eir/${id}`)
+    else setScanErr('Mã QR này không phải phiếu EIR của hệ thống.')
+  }, [nav])
+
+  async function onScanFile(file: File) {
     setScanMenu(false)
     setScanning(true); setScanErr('')
     try {
       const text = await decodeQrFromFile(file)
-      const id = text ? eirIdFromQr(text) : null
-      if (id) nav(`/eir/${id}`)
-      else setScanErr('Không đọc được mã QR trên phiếu. Hãy chụp/chọn ảnh rõ ô QR góc phiếu.')
+      if (text) handleQr(text)
+      else setScanErr('Không đọc được mã QR trong ảnh. Hãy chọn ảnh rõ ô QR góc phiếu.')
     } catch {
       setScanErr('Không đọc được ảnh. Thử lại.')
     } finally {
@@ -137,9 +145,9 @@ export function TraCuuEirPage() {
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40" onClick={() => setScanMenu(false)}>
           <div className="w-full max-w-[480px] bg-white rounded-t-3xl p-3 space-y-2" onClick={e => e.stopPropagation()}>
             <div className="text-center text-[13px] font-semibold text-ink-500 pb-1">Quét QR trên phiếu</div>
-            <button onClick={() => camRef.current?.click()}
+            <button onClick={() => { setScanMenu(false); setScanErr(''); setLiveScan(true) }}
               className="w-full h-12 rounded-xl bg-brand-700 text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:bg-brand-800">
-              <Camera size={18} /> Mở camera
+              <Camera size={18} /> Mở camera (quét trực tiếp)
             </button>
             <button onClick={() => libRef.current?.click()}
               className="w-full h-12 rounded-xl bg-ink-100 text-ink-700 font-semibold text-[15px] flex items-center justify-center gap-2 active:bg-ink-200">
@@ -152,10 +160,10 @@ export function TraCuuEirPage() {
         </div>
       )}
 
-      <input ref={camRef} type="file" accept="image/*" capture="environment" hidden
-        onChange={e => { const f = e.target.files?.[0]; if (f) onScan(f); e.target.value = '' }} />
+      {liveScan && <QrScanModal onClose={() => setLiveScan(false)} onDetect={handleQr} />}
+
       <input ref={libRef} type="file" accept="image/*" hidden
-        onChange={e => { const f = e.target.files?.[0]; if (f) onScan(f); e.target.value = '' }} />
+        onChange={e => { const f = e.target.files?.[0]; if (f) onScanFile(f); e.target.value = '' }} />
     </div>
   )
 }
